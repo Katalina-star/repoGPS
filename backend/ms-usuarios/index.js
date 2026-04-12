@@ -54,7 +54,7 @@ app.post("/api/usuarios", async (req, res) => {
   }
 });
 
-app.get('/api/usuarios', async (req, res) => {
+app.get("/api/usuarios", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -106,56 +106,75 @@ app.get("/api/usuarios/:id", async (req, res) => {
 });
 
 // EDITAR USUARIO
-app.put('/api/usuarios/:id', async (req, res) => {
+app.put("/api/usuarios/:id", async (req, res) => {
   const { id } = req.params;
-  const { rol_id, area_id, nombre_completo, correo, estado_activo } = req.body;
+  const { rol_id, area_id, nombre_completo, correo } = req.body;
 
   try {
-    await pool.query('BEGIN');
+    await pool.query("BEGIN");
 
     await pool.query(
       `
       UPDATE usuarios 
-      SET rol_id = $1, nombre_completo = $2, correo = $3, estado_activo = $4 
-      WHERE id = $5
+      SET rol_id = $1, nombre_completo = $2, correo = $3
+      WHERE id = $4
       `,
-      [rol_id, nombre_completo, correo, estado_activo, id]
+      [rol_id, nombre_completo, correo, id],
     );
 
     if (area_id) {
-      await pool.query('DELETE FROM usuario_area WHERE usuario_id = $1', [id]);
-      await pool.query(
-        'INSERT INTO usuario_area (usuario_id, area_id) VALUES ($1, $2)',
-        [id, area_id]
+      const checkArea = await pool.query(
+        "SELECT id FROM usuario_area WHERE usuario_id = $1",
+        [id],
       );
+
+      if (checkArea.rows.length > 0) {
+        await pool.query(
+          "UPDATE usuario_area SET area_id = $1 WHERE usuario_id = $2",
+          [area_id, id],
+        );
+      } else {
+        await pool.query(
+          "INSERT INTO usuario_area (usuario_id, area_id) VALUES ($1, $2)",
+          [id, area_id],
+        );
+      }
+    } else {
+      await pool.query("DELETE FROM usuario_area WHERE usuario_id = $1", [id]);
     }
 
-    await pool.query('COMMIT');
-    res.json({ message: 'Usuario y área actualizados correctamente' });
+    await pool.query("COMMIT");
+    res.json({ message: "Usuario y área actualizados correctamente" });
   } catch (err) {
-    await pool.query('ROLLBACK'); 
+    await pool.query("ROLLBACK");
     console.error(err);
-    res.status(500).json({ error: 'Error al actualizar el usuario y su área' });
+    res.status(500).json({ error: "Error al actualizar el usuario" });
   }
 });
 
 // ACTIVAR / DESACTIVAR USUARIO
-app.patch('/api/usuarios/:id/estado', async (req, res) => {
+app.patch("/api/usuarios/:id/estado", async (req, res) => {
   const { id } = req.params;
-  const { estado_activo } = req.body; 
+  const { estado_activo } = req.body;
   try {
-    await pool.query('UPDATE usuarios SET estado_activo = $1 WHERE id = $2', [estado_activo, id]);
-    res.json({ message: 'Estado actualizado correctamente' });
+    await pool.query("UPDATE usuarios SET estado_activo = $1 WHERE id = $2", [
+      estado_activo,
+      id,
+    ]);
+    res.json({ message: "Estado actualizado correctamente" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete('/api/usuarios/:id', async (req, res) => {
+app.delete("/api/usuarios/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    await pool.query('UPDATE usuarios SET estado_activo = false WHERE id = $1', [id]);
-    res.json({ message: 'Usuario eliminado lógicamente (Desactivado)' });
+    await pool.query(
+      "UPDATE usuarios SET estado_activo = false WHERE id = $1",
+      [id],
+    );
+    res.json({ message: "Usuario eliminado lógicamente (Desactivado)" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
