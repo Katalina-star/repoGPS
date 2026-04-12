@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   db:
     image: postgres:15
@@ -10,3 +11,19 @@ services:
       - "5433:5432"
     volumes:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  ms-usuarios:
+    build: 
+      context: ./backend/ms-usuarios 
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
+  frontend:
+    build: 
+      context: ./frontend 
+    ports:
+      - "5173:5173"
+    depends_on:
+      - ms-usuarios

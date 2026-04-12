@@ -8,10 +8,10 @@ app.use(express.json());
 
 const pool = new Pool({
   user: 'postgres',
-  host: 'localhost',
+  host: 'db',
   database: 'db_usuarios',
   password: 'password123',
-  port: 5433,
+  port: 5432,
 });
 
 app.get('/api/roles', async (req, res) => {
