@@ -1,10 +1,10 @@
-CREATE TABLE rol (
+CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
     estado_activo BOOLEAN DEFAULT true
 );
 
-CREATE TABLE usuario (
+CREATE TABLE usuarios (
     id SERIAL PRIMARY KEY,
     rol_id INTEGER REFERENCES roles(id),
     nombre_completo VARCHAR(100) NOT NULL,

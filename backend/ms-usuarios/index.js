@@ -11,7 +11,7 @@ const pool = new Pool({
   host: 'localhost',
   database: 'db_usuarios',
   password: 'password123',
-  port: 5432,
+  port: 5433,
 });
 
 app.get('/api/roles', async (req, res) => {
