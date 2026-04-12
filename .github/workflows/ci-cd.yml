@@ -1,0 +1,48 @@
+name: Pipeline Empresarial (CI/CD)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22' 
+
+      - name: Probar Frontend (Instalación y Compilación)
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Probar Backend (Instalación)
+        working-directory: ./backend/ms-usuarios
+        run: |
+          npm ci
+
+  deploy-to-digitalocean:
+    needs: test-and-build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Conectar y Desplegar en Producción
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            cd ~/repoGPS
+            git pull origin main
+            docker-compose up -d --build frontend ms-usuarios
+            docker image prune -f
