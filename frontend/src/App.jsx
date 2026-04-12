@@ -6,7 +6,7 @@ function App() {
   const [formData, setFormData] = useState({ rol_id: '', nombre_completo: '', correo: '', password_hash: '123456' });
 
   useEffect(() => {
-    fetch('http://localhost:3000/api/roles')
+    fetch('http://134.209.121.144:3000/api/roles')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -22,7 +22,7 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetch('http://localhost:3000/api/usuarios', {
+    const response = await fetch('http://134.209.121.144:3000/api/usuarios', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
