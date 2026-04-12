@@ -6,7 +6,7 @@ function App() {
   const [formData, setFormData] = useState({ rol_id: '', nombre_completo: '', correo: '', password_hash: '123456' });
 
   useEffect(() => {
-    fetch('http://68.183.100.49/:3000/api/roles')
+    fetch('http://68.183.100.49:3000/api/roles')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
