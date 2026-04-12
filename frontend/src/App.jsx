@@ -3,26 +3,40 @@ import './index.css'
 
 function App() {
   const [roles, setRoles] = useState([])
+  const [areas, setAreas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  
+  const [tabActiva, setTabActiva] = useState('activos') 
   const [errorBd, setErrorBd] = useState(null)
   const [editandoId, setEditandoId] = useState(null)
   const [busqueda, setBusqueda] = useState('')
 
   const [formData, setFormData] = useState({
     rol_id: '',
+    area_id: '',
     nombre_completo: '',
     correo: '',
     password_hash: '123456'
   })
 
+  
   const cargarRoles = async () => {
     try {
       const res = await fetch('http://localhost:3000/api/roles')
       const data = await res.json()
       if (Array.isArray(data)) setRoles(data)
-      else setErrorBd(data.error || 'Error al cargar roles')
     } catch {
-      setErrorBd('El backend está apagado o inalcanzable')
+      setErrorBd('Error al conectar con el servidor de roles')
+    }
+  }
+
+  const cargarAreas = async () => {
+    try {
+      const res = await fetch('http://localhost:3000/api/areas')
+      const data = await res.json()
+      if (Array.isArray(data)) setAreas(data)
+    } catch {
+      console.error('Error al cargar áreas')
     }
   }
 
@@ -33,18 +47,20 @@ function App() {
       if (Array.isArray(data)) setUsuarios(data)
       else setErrorBd(data.error || 'Error al cargar usuarios')
     } catch {
-      setErrorBd('No se pudieron cargar los usuarios')
+      setErrorBd('El backend está apagado o inalcanzable')
     }
   }
 
   useEffect(() => {
     cargarRoles()
+    cargarAreas()
     cargarUsuarios()
   }, [])
 
   const limpiarFormulario = () => {
     setFormData({
       rol_id: '',
+      area_id: '',
       nombre_completo: '',
       correo: '',
       password_hash: '123456'
@@ -54,49 +70,39 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     try {
-      const usuarioActual = usuarios.find((u) => u.id === editandoId)
-
-      const bodyData = editandoId
-        ? {
-            ...formData,
-            rol_id: Number(formData.rol_id),
-            estado_activo: usuarioActual?.estado_activo ?? true
-          }
-        : {
-            ...formData,
-            rol_id: Number(formData.rol_id)
-          }
-
-      const url = editandoId
-        ? `http://localhost:3000/api/usuarios/${editandoId}`
+      const url = editandoId 
+        ? `http://localhost:3000/api/usuarios/${editandoId}` 
         : 'http://localhost:3000/api/usuarios'
-
+      
       const method = editandoId ? 'PUT' : 'POST'
-
+      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData)
+        body: JSON.stringify({
+          ...formData,
+          rol_id: Number(formData.rol_id),
+          area_id: Number(formData.area_id)
+        })
       })
-
-      const data = await response.json()
 
       if (response.ok) {
         limpiarFormulario()
         cargarUsuarios()
       } else {
-        alert(data.error || 'Error al guardar usuario')
+        const data = await response.json()
+        alert(data.error || 'Error al procesar la solicitud')
       }
     } catch {
-      alert('Error al guardar usuario')
+      alert('Error de conexión al guardar')
     }
   }
 
   const handleEditar = (usuario) => {
     setFormData({
       rol_id: usuario.rol_id,
+      area_id: usuario.area_id || '',
       nombre_completo: usuario.nombre_completo,
       correo: usuario.correo,
       password_hash: usuario.password_hash || '123456'
@@ -105,58 +111,40 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const cambiarEstado = async (usuario) => {
+  const cambiarEstadoUsuario = async (id, nuevoEstado) => {
+    const confirmacion = nuevoEstado 
+      ? '¿Deseas reactivar este usuario?' 
+      : '¿Seguro que deseas mover este usuario a la papelera (desactivar)?'
+    
+    if (!window.confirm(confirmacion)) return
+
     try {
-      const response = await fetch(`http://localhost:3000/api/usuarios/${usuario.id}/estado`, {
+      const response = await fetch(`http://localhost:3000/api/usuarios/${id}/estado`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          estado_activo: !usuario.estado_activo
-        })
+        body: JSON.stringify({ estado_activo: nuevoEstado })
       })
-
-      const data = await response.json()
 
       if (response.ok) {
         cargarUsuarios()
       } else {
-        alert(data.error || 'Error al cambiar estado')
+        alert('Error al cambiar el estado')
       }
     } catch {
-      alert('Error al cambiar estado')
+      alert('Error de conexión')
     }
   }
 
-  const eliminarUsuario = async (usuario) => {
-    const confirmar = window.confirm(
-      `¿Seguro que deseas eliminar definitivamente a ${usuario.nombre_completo}?`
-    )
-    if (!confirmar) return
+  const usuariosFiltradosPorTab = usuarios.filter(u => 
+    tabActiva === 'activos' ? u.estado_activo : !u.estado_activo
+  )
 
-    try {
-      const response = await fetch(`http://localhost:3000/api/usuarios/${usuario.id}`, {
-        method: 'DELETE'
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        cargarUsuarios()
-        if (editandoId === usuario.id) limpiarFormulario()
-      } else {
-        alert(data.error || 'Error al eliminar usuario')
-      }
-    } catch {
-      alert('Error al eliminar usuario')
-    }
-  }
-
-  const usuariosFiltrados = usuarios.filter((usuario) => {
-    const texto = busqueda.toLowerCase()
+  const listaFinal = usuariosFiltradosPorTab.filter(u => {
+    const search = busqueda.toLowerCase()
     return (
-      usuario.nombre_completo.toLowerCase().includes(texto) ||
-      usuario.correo.toLowerCase().includes(texto) ||
-      usuario.rol_nombre.toLowerCase().includes(texto)
+      u.nombre_completo.toLowerCase().includes(search) ||
+      u.correo.toLowerCase().includes(search) ||
+      (u.area_nombre && u.area_nombre.toLowerCase().includes(search))
     )
   })
 
@@ -170,7 +158,6 @@ function App() {
             <p>Admin Panel</p>
           </div>
         </div>
-
         <nav className="sidebar-nav">
           <span className="nav-title">Gestión</span>
           <button className="nav-item active">Usuarios</button>
@@ -183,80 +170,67 @@ function App() {
         <header className="content-header">
           <div>
             <h1>Gestión de Usuarios</h1>
-            <p>Administración de cuentas, roles funcionales y estados</p>
+            <p>Administración de accesos y jerarquías del sistema</p>
           </div>
         </header>
 
-        {errorBd && (
-          <div className="alert-error">
-            <strong>Error:</strong> {errorBd}
-          </div>
-        )}
+        {errorBd && <div className="alert-error"><strong>Error:</strong> {errorBd}</div>}
 
         <section className="panel">
           <div className="panel-top">
-            <div>
-              <h3>{editandoId ? 'Editar usuario' : 'Nuevo usuario'}</h3>
-              <p>{editandoId ? 'Modifica los datos del usuario seleccionado' : 'Crea una nueva cuenta de usuario'}</p>
-            </div>
+            <h3>{editandoId ? 'Modificar Usuario' : 'Registrar Nuevo Usuario'}</h3>
           </div>
-
           <form onSubmit={handleSubmit} className="form-grid">
             <div className="field">
-              <label>Nombre completo</label>
-              <input
-                type="text"
+              <label>Nombre Completo</label>
+              <input 
+                type="text" 
                 placeholder="Ej: María Ignacia Zapata"
                 value={formData.nombre_completo}
-                onChange={(e) =>
-                  setFormData({ ...formData, nombre_completo: e.target.value })
-                }
-                required
+                onChange={e => setFormData({...formData, nombre_completo: e.target.value})}
+                required 
               />
             </div>
-
             <div className="field">
-              <label>Correo electrónico</label>
-              <input
-                type="email"
+              <label>Correo Electrónico</label>
+              <input 
+                type="email" 
                 placeholder="Ej: usuario@correo.com"
                 value={formData.correo}
-                onChange={(e) =>
-                  setFormData({ ...formData, correo: e.target.value })
-                }
-                required
+                onChange={e => setFormData({...formData, correo: e.target.value})}
+                required 
               />
             </div>
-
-            <div className="field field-full">
-              <label>Rol funcional</label>
-              <select
-                value={formData.rol_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, rol_id: e.target.value })
-                }
+            <div className="field">
+              <label>Rol Funcional</label>
+              <select 
+                value={formData.rol_id} 
+                onChange={e => setFormData({...formData, rol_id: e.target.value})} 
                 required
               >
                 <option value="">Seleccione un rol...</option>
-                {roles.map((rol) => (
-                  <option key={rol.id} value={rol.id}>
-                    {rol.nombre}
-                  </option>
+                {roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Área / Departamento</label>
+              <select 
+                value={formData.area_id} 
+                onChange={e => setFormData({...formData, area_id: e.target.value})} 
+                required
+              >
+                <option value="">Seleccione un área...</option>
+                {areas.map(a => (
+                  <option key={a.id} value={a.id}>{a.nombre} ({a.contratista_nombre})</option>
                 ))}
               </select>
             </div>
-
-            <div className="form-actions">
+            <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
               <button type="submit" className="btn btn-primary">
-                {editandoId ? 'Actualizar usuario' : 'Guardar usuario'}
+                {editandoId ? 'Actualizar Cambios' : 'Crear Usuario'}
               </button>
-
               {editandoId && (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={limpiarFormulario}
-                >
+                <button type="button" className="btn btn-secondary" onClick={limpiarFormulario}>
                   Cancelar
                 </button>
               )}
@@ -266,17 +240,26 @@ function App() {
 
         <section className="panel">
           <div className="panel-top table-top">
-            <div>
-              <h3>Lista de Usuarios</h3>
-              <p>Consulta, busca y administra usuarios registrados</p>
+            <div className="tabs">
+              <button 
+                className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`}
+                onClick={() => setTabActiva('activos')}
+              >
+                Activos 
+              </button>
+              <button 
+                className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`}
+                onClick={() => setTabActiva('inactivos')}
+              >
+                Inactivos 
+              </button>
             </div>
-
             <div className="search-box">
-              <input
-                type="text"
-                placeholder="Buscar por nombre, correo o rol..."
+              <input 
+                type="text" 
+                placeholder="Filtrar por nombre o área..." 
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={e => setBusqueda(e.target.value)}
               />
             </div>
           </div>
@@ -285,59 +268,37 @@ function App() {
             <table className="users-table">
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Nombre</th>
                   <th>Correo</th>
                   <th>Rol</th>
-                  <th>Estado</th>
+                  <th>Área</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {usuariosFiltrados.length > 0 ? (
-                  usuariosFiltrados.map((usuario) => (
-                    <tr key={usuario.id}>
-                      <td>{usuario.id}</td>
-                      <td>{usuario.nombre_completo}</td>
-                      <td>{usuario.correo}</td>
-                      <td>{usuario.rol_nombre}</td>
-                      <td>
-                        <span className={usuario.estado_activo ? 'badge badge-active' : 'badge badge-inactive'}>
-                          {usuario.estado_activo ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
+                {listaFinal.length > 0 ? (
+                  listaFinal.map(u => (
+                    <tr key={u.id}>
+                      <td>{u.nombre_completo}</td>
+                      <td>{u.correo}</td>
+                      <td><span className="role-tag">{u.rol_nombre}</span></td>
+                      <td>{u.area_nombre || 'No asignada'}</td>
                       <td>
                         <div className="table-actions">
-                          <button
-                            className="btn-mini btn-edit"
-                            onClick={() => handleEditar(usuario)}
-                          >
-                            Editar
-                          </button>
-
-                          <button
-                            className={usuario.estado_activo ? 'btn-mini btn-warning' : 'btn-mini btn-success'}
-                            onClick={() => cambiarEstado(usuario)}
-                          >
-                            {usuario.estado_activo ? 'Desactivar' : 'Activar'}
-                          </button>
-
-                          <button
-                            className="btn-mini btn-danger"
-                            onClick={() => eliminarUsuario(usuario)}
-                          >
-                            Eliminar
-                          </button>
+                          {tabActiva === 'activos' ? (
+                            <>
+                              <button className="btn-mini btn-edit" onClick={() => handleEditar(u)}>Editar</button>
+                              <button className="btn-mini btn-danger" onClick={() => cambiarEstadoUsuario(u.id, false)}>Eliminar</button>
+                            </>
+                          ) : (
+                            <button className="btn-mini btn-success" onClick={() => cambiarEstadoUsuario(u.id, true)}>Reactivar</button>
+                          )}
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan="6" className="empty-state">
-                      No hay usuarios registrados
-                    </td>
-                  </tr>
+                  <tr><td colSpan="5" className="empty-state">No se encontraron registros</td></tr>
                 )}
               </tbody>
             </table>
