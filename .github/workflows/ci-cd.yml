@@ -74,14 +74,14 @@ jobs:
         with:
           context: ./backend/ms-usuarios
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/repogps-backend:latest
+          tags: ghcr.io/katalina-star/repogps-backend:latest
 
       - name: Construir y Subir Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/repogps-frontend:latest
+          tags: ghcr.io/katalina_star/repogps-frontend:latest
 
   # ==========================================
   # FASE 3: DESPLIEGUE CONTINUO (CD) - El Repartidor
