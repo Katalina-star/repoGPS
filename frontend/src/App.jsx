@@ -38,7 +38,7 @@ function App() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-      <h2>Crear Usuario (Historia de Usuario-02)</h2>
+      <h2>Crear Usuario (Historia de Usuario-Dos)</h2>
       
       {}
       {errorBd && (
