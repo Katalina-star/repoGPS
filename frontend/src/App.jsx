@@ -15,7 +15,7 @@ function App() {
           setErrorBd(data.error || "Error desconocido en la BD");
         }
       })
-      .catch(err => {
+      .catch(() => {
         setErrorBd("El backend está apagado o inalcanzable");
       });
   }, []);

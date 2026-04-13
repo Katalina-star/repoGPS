@@ -57,7 +57,7 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-      - name: 🧪 Instalar Backend
+      - name: Instalar Backend
         working-directory: ./backend/ms-usuarios
         run: npm ci
 
