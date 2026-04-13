@@ -22,7 +22,7 @@ function App() {
   
   const cargarRoles = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/roles')
+      const res = await fetch('http://68.183.100.49:3000/api/roles')
       const data = await res.json()
       if (Array.isArray(data)) setRoles(data)
     } catch {
@@ -32,7 +32,7 @@ function App() {
 
   const cargarAreas = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/areas')
+      const res = await fetch('http://68.183.100.49:3000/api/areas')
       const data = await res.json()
       if (Array.isArray(data)) setAreas(data)
     } catch {
@@ -42,7 +42,7 @@ function App() {
 
   const cargarUsuarios = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/usuarios')
+      const res = await fetch('http://68.183.100.49:3000/api/usuarios')
       const data = await res.json()
       if (Array.isArray(data)) setUsuarios(data)
       else setErrorBd(data.error || 'Error al cargar usuarios')
@@ -72,8 +72,8 @@ function App() {
     e.preventDefault()
     try {
       const url = editandoId 
-        ? `http://localhost:3000/api/usuarios/${editandoId}` 
-        : 'http://localhost:3000/api/usuarios'
+        ? `http://68.183.100.49:3000/api/usuarios/${editandoId}` 
+        : 'http://68.183.100.49:3000/api/usuarios'
       
       const method = editandoId ? 'PUT' : 'POST'
       
@@ -119,7 +119,7 @@ function App() {
     if (!window.confirm(confirmacion)) return
 
     try {
-      const response = await fetch(`http://localhost:3000/api/usuarios/${id}/estado`, {
+      const response = await fetch(`http://68.183.100.49:3000/api/usuarios/${id}/estado`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado_activo: nuevoEstado })
