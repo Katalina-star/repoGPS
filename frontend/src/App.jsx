@@ -17,7 +17,7 @@ function App() {
 
   const cargarRoles = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/roles')
+      const res = await fetch('http://68.183.100.49:3000/api/roles')
       const data = await res.json()
       if (Array.isArray(data)) setRoles(data)
       else setErrorBd(data.error || 'Error al cargar roles')
@@ -28,7 +28,7 @@ function App() {
 
   const cargarUsuarios = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/usuarios')
+      const res = await fetch('http://68.183.100.49:3000/api/usuarios')
       const data = await res.json()
       if (Array.isArray(data)) setUsuarios(data)
       else setErrorBd(data.error || 'Error al cargar usuarios')
@@ -74,8 +74,8 @@ function App() {
           }
 
       const url = editandoId
-        ? `http://localhost:3000/api/usuarios/${editandoId}`
-        : 'http://localhost:3000/api/usuarios'
+        ? `http://68.183.100.49:3000/api/usuarios/${editandoId}`
+        : 'http://68.183.100.49:3000/api/usuarios'
 
       const method = editandoId ? 'PUT' : 'POST'
 
@@ -111,7 +111,7 @@ function App() {
 
   const cambiarEstado = async (usuario) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/usuarios/${usuario.id}/estado`, {
+      const response = await fetch(`http://68.183.100.49:3000/api/usuarios/${usuario.id}/estado`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -138,7 +138,7 @@ function App() {
     if (!confirmar) return
 
     try {
-      const response = await fetch(`http://localhost:3000/api/usuarios/${usuario.id}`, {
+      const response = await fetch(`http://68.183.100.49:3000/api/usuarios/${usuario.id}`, {
         method: 'DELETE'
       })
 
