@@ -81,7 +81,7 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/katalina_star/repogps-frontend:latest
+          tags: ghcr.io/katalina-star/repogps-frontend:latest
 
   # ==========================================
   # FASE 3: DESPLIEGUE CONTINUO (CD) - El Repartidor
