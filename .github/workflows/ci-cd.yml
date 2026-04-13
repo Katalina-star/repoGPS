@@ -1,4 +1,4 @@
-name: Pipeline (CI/CD)
+name: Pipeline Empresarial (CI/CD)
 
 on:
   push:
@@ -17,67 +17,100 @@ jobs:
     name: Escáner de Vulnerabilidades
     runs-on: ubuntu-latest
     permissions:
-      security-events: write 
+      security-events: write
       actions: read
       contents: read
     steps:
-      - name: Descargar código
-        uses: actions/checkout@v4
-
-      - name: Inicializar CodeQL
-        uses: github/codeql-action/init@v3
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
         with:
-          languages: javascript 
-
-      - name: Analizar Código
-        uses: github/codeql-action/analyze@v3
+          languages: javascript
+      - uses: github/codeql-action/analyze@v3
 
   # ==========================================
-  # FASE 1B: INTEGRACIÓN CONTINUA (Linter + Build)
+  # FASE 1B: INTEGRACIÓN CONTINUA (Linter + Pruebas)
   # ==========================================
   test-and-build:
     name: Pruebas de Calidad
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar código
-        uses: actions/checkout@v4
-
-      - name: Preparar Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Auditoría de Calidad Frontend (Linter)
+      - name: Linter y Build Frontend
         working-directory: ./frontend
         run: |
           npm ci
-          npm run lint  
-
-      - name: Compilar Frontend
-        working-directory: ./frontend
-        run: npm run build
-
+          npm run lint
+          npm run build
       - name: Instalar Backend
         working-directory: ./backend/ms-usuarios
         run: npm ci
 
   # ==========================================
-  # FASE 2: DESPLIEGUE CONTINUO (CD)
+  # FASE 2: LA FÁBRICA (Construir Imágenes en GitHub)
+  # ==========================================
+  build-and-push-images:
+    name: Empaquetar en GitHub
+    needs: [test-and-build, security-scan]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write 
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Iniciar sesión en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir y Subir Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/ms-usuarios
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/repogps-backend:latest
+
+      - name: Construir y Subir Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/repogps-frontend:latest
+
+  # ==========================================
+  # FASE 3: DESPLIEGUE CONTINUO (CD) - El Repartidor
   # ==========================================
   deploy-to-digitalocean:
-    needs: [test-and-build, security-scan] 
+    name: Desplegar en Servidor
+    needs: build-and-push-images 
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Conectar y Desplegar en Producción
+      - name: Conectar y Desplegar
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DO_HOST }}
           username: ${{ secrets.DO_USERNAME }}
           key: ${{ secrets.DO_SSH_KEY }}
+          envs: GITHUB_TOKEN
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           script: |
+           
+            echo "$GITHUB_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
             cd ~/repoGPS
             git pull origin main
-            docker-compose up -d --build frontend ms-usuarios
-            docker image prune -f
+            
+            docker-compose pull
+           
+            docker-compose up -d
+            
+            docker image prune -a -f
