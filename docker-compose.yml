@@ -8,9 +8,10 @@ services:
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: db_usuarios
     ports:
-      - "0.0.0.0:5433:5432"
+      - "1270.0.0.1:5433:5432"
     volumes:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - pgdata:/var/lib/postgresql/data
 
   ms-usuarios:
     image: ghcr.io/katalina-star/repogps-backend:latest
@@ -35,3 +36,5 @@ services:
       - "5173:5173"
     depends_on:
       - ms-usuarios
+  volumes:
+    pgdata:
