@@ -10,7 +10,33 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ==========================================
+  # FASE 1A: AUDITORÍA DE SEGURIDAD (CodeQL)
+  # ==========================================
+  security-scan:
+    name: Escáner de Vulnerabilidades
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write 
+      actions: read
+      contents: read
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Inicializar CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript 
+
+      - name: Analizar Código
+        uses: github/codeql-action/analyze@v3
+
+  # ==========================================
+  # FASE 1B: INTEGRACIÓN CONTINUA (Linter + Build)
+  # ==========================================
   test-and-build:
+    name: Pruebas de Calidad
     runs-on: ubuntu-latest
     steps:
       - name: Descargar código
@@ -19,21 +45,27 @@ jobs:
       - name: Preparar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22' 
+          node-version: '22'
 
-      - name: Probar Frontend (Instalación y Compilación)
+      - name: Auditoría de Calidad Frontend (Linter)
         working-directory: ./frontend
         run: |
           npm ci
-          npm run build
+          npm run lint  
 
-      - name: Probar Backend (Instalación)
+      - name: Compilar Frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: 🧪 Instalar Backend
         working-directory: ./backend/ms-usuarios
-        run: |
-          npm ci
+        run: npm ci
 
+  # ==========================================
+  # FASE 2: DESPLIEGUE CONTINUO (CD)
+  # ==========================================
   deploy-to-digitalocean:
-    needs: test-and-build
+    needs: [test-and-build, security-scan] 
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
