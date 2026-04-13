@@ -38,8 +38,12 @@ function App() {
   }
 
   useEffect(() => {
-    cargarRoles()
-    cargarUsuarios()
+    const inicializarDatos = async () => {
+      await cargarRoles()
+      await cargarUsuarios()
+    }
+    
+    inicializarDatos()
   }, [])
 
   const limpiarFormulario = () => {
