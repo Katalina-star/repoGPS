@@ -58,7 +58,7 @@ jobs:
       # Backend ms-mantenedor
       - name: Instalar Backend Mantenedor
         working-directory: ./backend/ms-mantenedor
-        run: npm ci
+        run: npm install
 
   # ==========================================
   # FASE 2: LA FÁBRICA (Construir Imágenes en GitHub)
