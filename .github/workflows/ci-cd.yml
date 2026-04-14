@@ -101,6 +101,7 @@ jobs:
           host: ${{ secrets.UBB_HOST }}
           username: ${{ secrets.UBB_USERNAME }}
           key: ${{ secrets.UBB_SSH_KEY }} 
+          passphrase: ${{ secrets.UBB_SSH_PASSPHRASE }}
           envs: GITHUB_TOKEN
           script: |
             cd ~/repoGPS
