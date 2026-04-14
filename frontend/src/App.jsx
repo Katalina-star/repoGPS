@@ -19,10 +19,11 @@ function App() {
     password_hash: '123456'
   })
 
+  const API_URL = import.meta.env.VITE_API_URL || '';
   
   const cargarRoles = async () => {
     try {
-      const res = await fetch('/api/roles')
+      const res = await fetch(`${API_URL}/api/roles`)
       const data = await res.json()
       if (Array.isArray(data)) setRoles(data)
     } catch {
@@ -32,7 +33,7 @@ function App() {
 
   const cargarAreas = async () => {
     try {
-      const res = await fetch('/api/areas')
+      const res = await fetch(`${API_URL}/api/areas`)
       const data = await res.json()
       if (Array.isArray(data)) setAreas(data)
     } catch {
@@ -42,7 +43,7 @@ function App() {
 
   const cargarUsuarios = async () => {
     try {
-      const res = await fetch('/api/usuarios')
+      const res = await fetch(`${API_URL}/api/usuarios`)
       const data = await res.json()
       if (Array.isArray(data)) setUsuarios(data)
       else setErrorBd(data.error || 'Error al cargar usuarios')
@@ -76,8 +77,8 @@ function App() {
     e.preventDefault()
     try {
       const url = editandoId 
-        ? `/api/usuarios/${editandoId}` 
-        : '/api/usuarios'
+        ? `${API_URL}/api/usuarios/${editandoId}` 
+        : `${API_URL}/api/usuarios`
       
       const method = editandoId ? 'PUT' : 'POST'
       
@@ -123,7 +124,7 @@ function App() {
     if (!window.confirm(confirmacion)) return
 
     try {
-      const response = await fetch(`/api/usuarios/${id}/estado`, {
+      const response = await fetch(`${API_URL}/api/usuarios/${id}/estado`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado_activo: nuevoEstado })
