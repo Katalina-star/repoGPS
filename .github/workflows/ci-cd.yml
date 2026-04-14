@@ -89,8 +89,8 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ github.repository }}/repogps-frontend:latest
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/repogps-frontend:latest
+          tags: ghcr.io/${{ github.repository.toLowerCase() }}/repogps-frontend:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository.toLowerCase() }}/repogps-frontend:latest
           cache-to: type=inline
 
       # ============================================
@@ -101,8 +101,8 @@ jobs:
         with:
           context: ./backend/ms-usuarios
           push: true
-          tags: ghcr.io/${{ github.repository }}/repogps-ms-usuarios:latest
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/repogps-ms-usuarios:latest
+          tags: ghcr.io/${{ github.repository.toLowerCase() }}/repogps-ms-usuarios:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository.toLowerCase() }}/repogps-ms-usuarios:latest
           cache-to: type=inline
 
       # ============================================
@@ -113,8 +113,8 @@ jobs:
         with:
           context: ./backend/ms-mantenedor
           push: true
-          tags: ghcr.io/${{ github.repository }}/repogps-ms-mantenedor:latest
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/repogps-ms-mantenedor:latest
+          tags: ghcr.io/${{ github.repository.toLowerCase() }}/repogps-ms-mantenedor:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository.toLowerCase() }}/repogps-ms-mantenedor:latest
           cache-to: type=inline
 
   # ==========================================
