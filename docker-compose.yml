@@ -89,7 +89,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "8045:80"
+      - "8045:8045"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
