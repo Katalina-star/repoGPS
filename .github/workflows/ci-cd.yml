@@ -84,10 +84,10 @@ jobs:
           tags: ghcr.io/katalina-star/repogps-frontend:latest
 
   # ==========================================
-  # FASE 3: DESPLIEGUE CONTINUO (CD) - El Repartidor
+  # FASE 3: DESPLIEGUE CONTINUO (CD) - Servidor UBB
   # ==========================================
-  deploy-to-digitalocean:
-    name: Desplegar en Servidor
+  deploy-to-ubb:
+    name: Desplegar en Servidor UBB
     needs: build-and-push-images 
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -98,9 +98,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          host: ${{ secrets.DO_HOST }}
-          username: ${{ secrets.DO_USERNAME }}
-          key: ${{ secrets.DO_SSH_KEY }}
+          host: ${{ secrets.UBB_HOST }}
+          username: ${{ secrets.UBB_USERNAME }}
+          key: ${{ secrets.UBB_SSH_KEY }} 
           envs: GITHUB_TOKEN
           script: |
             cd ~/repoGPS
