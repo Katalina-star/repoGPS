@@ -6,19 +6,59 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Configuración de conexión a db_usuarios
 const pool = new Pool({
-  user: 'postgres',
-  host: 'db',
-  database: 'db_usuarios',
-  password: 'password123',
-  port: 5432,
+  user: process.env.DB_USER || "postgres",
+  host: process.env.DB_HOST || "db",
+  database: process.env.DB_NAME || "db_usuarios",
+  password: process.env.DB_PASSWORD || "password123",
+  port: process.env.DB_PORT || 5432,
 });
 
-// LISTAR ROLES
+// URL del microservicio ms-mantenedor para API Composition
+const MS_MANTENEDOR_URL = process.env.MS_MANTENEDOR_URL || "http://ms-mantenedor:3001";
+
+// ============================================
+// HELPERS - API Composition
+// ============================================
+
+/**
+ * Obtiene un área por ID desde ms-mantenedor
+ * @param {number} areaId - ID del área
+ * @returns {Promise<object|null>} - El área o null si no existe
+ */
+async function fetchAreaById(areaId) {
+  try {
+    const response = await fetch(`${MS_MANTENEDOR_URL}/api/areas/${areaId}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.error(`Error al obtener área ${areaId}:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Obtiene múltiples áreas por sus IDs (en paralelo)
+ * @param {number[]} areaIds - Array de IDs de áreas
+ * @returns {Promise<object[]>} - Array de áreas
+ */
+async function fetchAreasByIds(areaIds) {
+  if (!areaIds || areaIds.length === 0) return [];
+  const uniqueIds = [...new Set(areaIds.filter(Boolean))];
+  const promises = uniqueIds.map(id => fetchAreaById(id));
+  const results = await Promise.all(promises);
+  return results.filter(area => area !== null);
+}
+
+// ============================================
+// ENDPOINTS ROLES
+// ============================================
+
 app.get("/api/roles", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM roles WHERE estado_activo = true ORDER BY id ASC",
+      "SELECT * FROM roles WHERE estado_activo = true ORDER BY id ASC"
     );
     res.json(result.rows);
   } catch (err) {
@@ -26,6 +66,11 @@ app.get("/api/roles", async (req, res) => {
   }
 });
 
+// ============================================
+// ENDPOINTS USUARIOS
+// ============================================
+
+// POST /api/usuarios - Crear nuevo usuario
 app.post("/api/usuarios", async (req, res) => {
   const { rol_id, area_id, nombre_completo, correo, password_hash } = req.body;
 
@@ -36,7 +81,7 @@ app.post("/api/usuarios", async (req, res) => {
       VALUES ($1, $2, $3, $4)
       RETURNING *
       `,
-      [rol_id, nombre_completo, correo, password_hash],
+      [rol_id, nombre_completo, correo, password_hash]
     );
 
     const nuevoUsuario = resultUsuario.rows[0];
@@ -44,7 +89,7 @@ app.post("/api/usuarios", async (req, res) => {
     if (area_id) {
       await pool.query(
         `INSERT INTO usuario_area (usuario_id, area_id) VALUES ($1, $2)`,
-        [nuevoUsuario.id, area_id],
+        [nuevoUsuario.id, area_id]
       );
     }
 
@@ -54,58 +99,91 @@ app.post("/api/usuarios", async (req, res) => {
   }
 });
 
+// GET /api/usuarios - Listar usuarios con API Composition
 app.get("/api/usuarios", async (req, res) => {
   try {
+    // 1. Obtener usuarios con sus área IDs (SIN JOIN a areas - esa tabla está en otra DB)
     const result = await pool.query(`
-      SELECT
+      SELECT 
         u.id, u.nombre_completo, u.correo, u.password_hash, u.estado_activo, u.rol_id,
-        r.nombre AS rol_nombre, ua.area_id, a.nombre AS area_nombre
+        r.nombre AS rol_nombre,
+        array_agg(ua.area_id) FILTER (WHERE ua.area_id IS NOT NULL) AS area_ids
       FROM usuarios u
       INNER JOIN roles r ON u.rol_id = r.id
       LEFT JOIN usuario_area ua ON u.id = ua.usuario_id
-      LEFT JOIN areas a ON ua.area_id = a.id
-      /* Quitamos el WHERE de estado_activo para recibir todo */
+      GROUP BY u.id, r.nombre
       ORDER BY u.id ASC
     `);
-    res.json(result.rows);
+
+    // 2. Para cada usuario, obtener los detalles de las áreas desde ms-mantenedor (API Composition)
+    const usuariosConAreas = await Promise.all(
+      result.rows.map(async (usuario) => {
+        let areas = [];
+        
+        if (usuario.area_ids && usuario.area_ids.length > 0) {
+          areas = await fetchAreasByIds(usuario.area_ids);
+        }
+
+        return {
+          ...usuario,
+          areas: areas,
+          // Mantener para compatibilidad con el frontend
+          area_id: areas.length > 0 ? areas[0].id : null,
+          area_nombre: areas.length > 0 ? areas[0].nombre : null
+        };
+      })
+    );
+
+    res.json(usuariosConAreas);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// OBTENER USUARIO POR ID
+// GET /api/usuarios/:id - Obtener usuario por ID con API Composition
 app.get("/api/usuarios/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
     const result = await pool.query(
       `
-      SELECT
-        u.id,
-        u.nombre_completo,
-        u.correo,
-        u.password_hash,
-        u.estado_activo,
-        u.rol_id,
-        r.nombre AS rol_nombre
+      SELECT 
+        u.id, u.nombre_completo, u.correo, u.password_hash, u.estado_activo, u.rol_id,
+        r.nombre AS rol_nombre,
+        array_agg(ua.area_id) FILTER (WHERE ua.area_id IS NOT NULL) AS area_ids
       FROM usuarios u
       INNER JOIN roles r ON u.rol_id = r.id
+      LEFT JOIN usuario_area ua ON u.id = ua.usuario_id
       WHERE u.id = $1
+      GROUP BY u.id, r.nombre
       `,
-      [id],
+      [id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    res.json(result.rows[0]);
+    const usuario = result.rows[0];
+    
+    // API Composition: obtener las áreas desde ms-mantenedor
+    let areas = [];
+    if (usuario.area_ids && usuario.area_ids.length > 0) {
+      areas = await fetchAreasByIds(usuario.area_ids);
+    }
+
+    res.json({
+      ...usuario,
+      areas: areas,
+      area_id: areas.length > 0 ? areas[0].id : null,
+      area_nombre: areas.length > 0 ? areas[0].nombre : null
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// EDITAR USUARIO
+// PUT /api/usuarios/:id - Editar usuario
 app.put("/api/usuarios/:id", async (req, res) => {
   const { id } = req.params;
   const { rol_id, area_id, nombre_completo, correo } = req.body;
@@ -119,24 +197,24 @@ app.put("/api/usuarios/:id", async (req, res) => {
       SET rol_id = $1, nombre_completo = $2, correo = $3
       WHERE id = $4
       `,
-      [rol_id, nombre_completo, correo, id],
+      [rol_id, nombre_completo, correo, id]
     );
 
     if (area_id) {
       const checkArea = await pool.query(
         "SELECT id FROM usuario_area WHERE usuario_id = $1",
-        [id],
+        [id]
       );
 
       if (checkArea.rows.length > 0) {
         await pool.query(
           "UPDATE usuario_area SET area_id = $1 WHERE usuario_id = $2",
-          [area_id, id],
+          [area_id, id]
         );
       } else {
         await pool.query(
           "INSERT INTO usuario_area (usuario_id, area_id) VALUES ($1, $2)",
-          [id, area_id],
+          [area_id, id]
         );
       }
     } else {
@@ -152,7 +230,7 @@ app.put("/api/usuarios/:id", async (req, res) => {
   }
 });
 
-// ACTIVAR / DESACTIVAR USUARIO
+// PATCH /api/usuarios/:id/estado - Activar/Desactivar usuario
 app.patch("/api/usuarios/:id/estado", async (req, res) => {
   const { id } = req.params;
   const { estado_activo } = req.body;
@@ -167,12 +245,13 @@ app.patch("/api/usuarios/:id/estado", async (req, res) => {
   }
 });
 
+// DELETE /api/usuarios/:id - Eliminación lógica
 app.delete("/api/usuarios/:id", async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query(
       "UPDATE usuarios SET estado_activo = false WHERE id = $1",
-      [id],
+      [id]
     );
     res.json({ message: "Usuario eliminado lógicamente (Desactivado)" });
   } catch (err) {
@@ -180,86 +259,8 @@ app.delete("/api/usuarios/:id", async (req, res) => {
   }
 });
 
-app.get("/api/contratistas", async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT * FROM contratistas WHERE estado_activo = true ORDER BY id ASC",
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post("/api/contratistas", async (req, res) => {
-  const { razon_social, rut } = req.body;
-  try {
-    const result = await pool.query(
-      "INSERT INTO contratistas (razon_social, rut) VALUES ($1, $2) RETURNING *",
-      [razon_social, rut],
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/api/areas", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT a.id, a.nombre, a.estado_activo, c.razon_social AS contratista_nombre 
-      FROM areas a
-      INNER JOIN contratistas c ON a.contratista_id = c.id
-      WHERE a.estado_activo = true 
-      ORDER BY a.id ASC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post("/api/areas", async (req, res) => {
-  const { contratista_id, nombre } = req.body;
-  try {
-    const result = await pool.query(
-      "INSERT INTO areas (contratista_id, nombre) VALUES ($1, $2) RETURNING *",
-      [contratista_id, nombre],
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/api/disciplinas", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT d.id, d.nombre, d.estado_activo, a.nombre AS area_nombre 
-      FROM disciplinas d
-      INNER JOIN areas a ON d.area_id = a.id
-      WHERE d.estado_activo = true 
-      ORDER BY d.id ASC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post("/api/disciplinas", async (req, res) => {
-  const { area_id, nombre } = req.body;
-  try {
-    const result = await pool.query(
-      "INSERT INTO disciplinas (area_id, nombre) VALUES ($1, $2) RETURNING *",
-      [area_id, nombre],
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.listen(3000, () => {
-  console.log("Servidor Backend corriendo en el puerto 3000");
+// Iniciar servidor en puerto 3000
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor ms-usuarios corriendo en el puerto ${PORT}`);
 });

@@ -1,47 +1,108 @@
 version: '3.8'
 
 services:
+  # ============================================
+  # Base de datos de Usuarios (existente)
+  # ============================================
   db:
     image: postgres:15
+    container_name: db_usuarios
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: db_usuarios
-    #ports:
-    #  - "127.0.0.1:5433:5432" 
     volumes:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_usuarios:/var/lib/postgresql/data
+    networks:
+      - app-network
 
+  # ============================================
+  # Base de datos del Mantenedor (NUEVA)
+  # ============================================
+  db_mantenedor:
+    image: postgres:15
+    container_name: db_mantenedor
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: db_mantenedor
+    volumes:
+      - ./database/init_mantenedor.sql:/docker-entrypoint-initdb.d/init_mantenedor.sql
+      - pgdata_mantenedor:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # ============================================
+  # Microservicio Usuarios (refactorizado)
+  # ============================================
   ms-usuarios:
-    image: ghcr.io/katalina-star/repogps-backend:latest
+    build: ./backend/ms-usuarios
+    container_name: ms-usuarios
     environment:
       - NODE_OPTIONS=--max-old-space-size=256
-    deploy:
-      resources:
-        limits:
-          memory: 300M
+      - DB_USER=postgres
+      - DB_HOST=db
+      - DB_NAME=db_usuarios
+      - DB_PASSWORD=password123
+      - DB_PORT=5432
+      - MS_MANTENEDOR_URL=http://ms-mantenedor:3001
     depends_on:
       - db
+      - db_mantenedor
+      - ms-mantenedor
+    networks:
+      - app-network
 
-  frontend:
-    image: ghcr.io/katalina-star/repogps-frontend:latest
-    deploy:
-      resources:
-        limits:
-          memory: 300M
+  # ============================================
+  # Microservicio Mantenedor (NUEVO)
+  # ============================================
+  ms-mantenedor:
+    build: ./backend/ms-mantenedor
+    container_name: ms-mantenedor
+    environment:
+      - DB_USER=postgres
+      - DB_HOST=db_mantenedor
+      - DB_NAME=db_mantenedor
+      - DB_PASSWORD=password123
+      - DB_PORT=5432
+      - PORT=3001
     depends_on:
-      - ms-usuarios
+      - db_mantenedor
+    networks:
+      - app-network
 
+  # ============================================
+  # Frontend (existente)
+  # ============================================
+  frontend:
+    build: ./frontend
+    container_name: frontend-ui
+    environment:
+      - VITE_API_USUARIOS_URL=http://ms-usuarios:3000
+    networks:
+      - app-network
+
+  # ============================================
+  # Nginx (existente)
+  # ============================================
   nginx:
     image: nginx:alpine
     ports:
-      - "8045:8045" 
+      - "8045:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - frontend
       - ms-usuarios
+      - ms-mantenedor
+    networks:
+      - app-network
 
 volumes:
-  pgdata:
+  pgdata_usuarios:
+  pgdata_mantenedor:
+
+networks:
+  app-network:
+    driver: bridge

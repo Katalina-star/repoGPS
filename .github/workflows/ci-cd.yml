@@ -8,6 +8,8 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # ==========================================
@@ -35,17 +37,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      
+      # Frontend
       - name: Linter y Build Frontend
         working-directory: ./frontend
         run: |
           npm ci
           npm run lint
           npm run build
-      - name: Instalar Backend
+      
+      # Backend ms-usuarios
+      - name: Instalar Backend Usuarios
         working-directory: ./backend/ms-usuarios
+        run: npm ci
+      
+      # Backend ms-mantenedor
+      - name: Instalar Backend Mantenedor
+        working-directory: ./backend/ms-mantenedor
         run: npm ci
 
   # ==========================================
@@ -69,19 +81,41 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Construir y Subir Backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend/ms-usuarios
-          push: true
-          tags: ghcr.io/katalina-star/repogps-backend:latest
-
+      # ============================================
+      # Build Frontend
+      # ============================================
       - name: Construir y Subir Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/katalina-star/repogps-frontend:latest
+          tags: ghcr.io/${{ github.repository }}/repogps-frontend:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/repogps-frontend:latest
+          cache-to: type=inline
+
+      # ============================================
+      # Build ms-usuarios
+      # ============================================
+      - name: Construir y Subir Backend Usuarios
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/ms-usuarios
+          push: true
+          tags: ghcr.io/${{ github.repository }}/repogps-ms-usuarios:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/repogps-ms-usuarios:latest
+          cache-to: type=inline
+
+      # ============================================
+      # Build ms-mantenedor (NUEVO)
+      # ============================================
+      - name: Construir y Subir Backend Mantenedor
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/ms-mantenedor
+          push: true
+          tags: ghcr.io/${{ github.repository }}/repogps-ms-mantenedor:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/repogps-ms-mantenedor:latest
+          cache-to: type=inline
 
   # ==========================================
   # FASE 3: DESPLIEGUE CONTINUO (CD) - Servidor UBB
