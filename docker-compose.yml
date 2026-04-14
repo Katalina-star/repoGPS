@@ -79,7 +79,7 @@ services:
     build: ./frontend
     container_name: frontend-ui
     environment:
-      - VITE_API_USUARIOS_URL=http://ms-usuarios:3000
+      - VITE_API_USUARIOS_URL=http://nginx:80
     networks:
       - app-network
 
