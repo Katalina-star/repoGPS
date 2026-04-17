@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import './index.css'
 
 function App() {
-  // --- ESTADOS DE DATOS ---
+  // ---  ESTADOS DE DATOS ---
   const [roles, setRoles] = useState([])
   const [areas, setAreas] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [contratistas, setContratistas] = useState([]) 
 
-  // --- ESTADOS DE UI ---
+  // ---  ESTADOS DE UI Y NAVEGACIÓN ---
   const [seccionActual, setSeccionActual] = useState('usuarios') 
   const [tabActiva, setTabActiva] = useState('activos') 
   const [errorBd, setErrorBd] = useState(null)
@@ -17,7 +17,7 @@ function App() {
 
   const API_URL = import.meta.env.VITE_API_URL || '';
 
-  // --- FUNCIONES DE CARGA (Envueltas en useCallback para evitar errores de linter) ---
+  // ---  FUNCIONES DE CARGA (Con useCallback para el Pipeline) ---
   const cargarRoles = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/roles`)
@@ -58,7 +58,7 @@ function App() {
     inicializar()
   }, [cargarRoles, cargarAreas, cargarUsuarios, cargarContratistas])
 
-  // --- FORMULARIOS ---
+  // ---  FORMULARIOS ---
   const [formData, setFormData] = useState({
     rol_id: '',
     area_id: '',
@@ -80,10 +80,11 @@ function App() {
   const limpiarFormularios = () => {
     setFormData({ rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456' })
     setFormContratista({ razon_social: '', rut: '' })
+    setFormArea({ nombre: '', contratista_id: '' })
     setEditandoId(null)
   }
 
-  // --- MANEJADORES ---
+  // ---  MANEJADORES DE ENVÍO ---
   const handleSubmitUsuario = async (e) => {
     e.preventDefault()
     try {
@@ -144,20 +145,19 @@ function App() {
     cargarContratistas()
   }
 
-  // --- FILTROS ---
+  // --- 6. FILTROS ---
   const listaUsuariosFiltrada = usuarios
     .filter(u => tabActiva === 'activos' ? u.estado_activo : !u.estado_activo)
     .filter(u => u.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()))
 
   return (
     <div className="layout">
+
+      {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">GS</div>
-          <div>
-            <h2>repoGPS</h2>
-            <p>Admin Panel</p>
-          </div>
+          <div><h2>repoGPS</h2><p>Admin Panel</p></div>
         </div>
         <nav className="sidebar-nav">
           <span className="nav-title">Mantenimiento</span>
@@ -165,10 +165,12 @@ function App() {
             className={`nav-item ${seccionActual === 'usuarios' ? 'active' : ''}`}
             onClick={() => { setSeccionActual('usuarios'); limpiarFormularios(); }}
           > Usuarios </button>
+          
           <button 
             className={`nav-item ${seccionActual === 'contratistas' ? 'active' : ''}`}
             onClick={() => { setSeccionActual('contratistas'); limpiarFormularios(); }}
           > Contratistas </button>
+
           <button 
             className={`nav-item ${seccionActual === 'areas' ? 'active' : ''}`}
             onClick={() => { setSeccionActual('areas'); limpiarFormularios(); }}
@@ -178,7 +180,11 @@ function App() {
 
       <main className="content">
         <header className="content-header">
-          <h1>{seccionActual === 'usuarios' ? 'Gestión de Usuarios' : seccionActual === 'contratistas' ? 'Empresas Contratistas' : 'Áreas de Trabajo'}</h1>
+          <h1>
+            {seccionActual === 'usuarios' && 'Gestión de Usuarios'}
+            {seccionActual === 'contratistas' && 'Empresas Contratistas'}
+            {seccionActual === 'areas' && 'Áreas de Trabajo'}
+          </h1>
           <div className="search-bar">
             <input 
               type="text" 
@@ -191,6 +197,7 @@ function App() {
 
         {errorBd && <div className="alert-error"><strong>Error:</strong> {errorBd}</div>}
 
+        {/* --- SECCIÓN USUARIOS --- */}
         {seccionActual === 'usuarios' && (
           <>
             <section className="panel">
@@ -251,10 +258,11 @@ function App() {
           </>
         )}
 
+        {/* --- SECCIÓN CONTRATISTAS --- */}
         {seccionActual === 'contratistas' && (
           <>
             <section className="panel">
-              <div className="panel-top"><h3>Nuevo Contratista</h3></div>
+              <div className="panel-top"><h3>{editandoId ? 'Modificar' : 'Nuevo'} Contratista</h3></div>
               <form onSubmit={handleSubmitContratista} className="form-grid">
                 <div className="field">
                   <label>Razón Social</label>
@@ -264,12 +272,15 @@ function App() {
                   <label>RUT</label>
                   <input type="text" value={formContratista.rut} onChange={e => setFormContratista({...formContratista, rut: e.target.value})} required />
                 </div>
-                <div className="form-actions"><button type="submit" className="btn btn-primary">Guardar</button></div>
+                <div className="form-actions">
+                    <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Guardar Empresa'}</button>
+                    {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormularios}>Cancelar</button>}
+                </div>
               </form>
             </section>
             <section className="panel">
               <div className="table-wrap">
-                <table>
+                <table className="users-table">
                   <thead><tr><th>ID</th><th>Razón Social</th><th>RUT</th><th>Acciones</th></tr></thead>
                   <tbody>
                     {contratistas.map(c => (
@@ -277,7 +288,10 @@ function App() {
                         <td>{c.id}</td>
                         <td>{c.razon_social}</td>
                         <td>{c.rut}</td>
-                        <td><button className="btn-mini btn-danger" onClick={() => eliminarContratista(c.id)}>Eliminar</button></td>
+                        <td>
+                          <button className="btn-mini btn-primary" style={{marginRight: '5px'}} onClick={() => {setEditandoId(c.id); setFormContratista({razon_social: c.razon_social, rut: c.rut})}}>Editar</button>
+                          <button className="btn-mini btn-danger" onClick={() => eliminarContratista(c.id)}>Eliminar</button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -287,29 +301,30 @@ function App() {
           </>
         )}
 
+        {/* --- SECCIÓN ÁREAS --- */}
         {seccionActual === 'areas' && (
           <>
             <section className="panel">
-              <div className="panel-top"><h3>Nueva Área</h3></div>
+              <div className="panel-top"><h3>Registrar Nueva Área</h3></div>
               <form onSubmit={handleSubmitArea} className="form-grid">
                 <div className="field">
-                  <label>Nombre</label>
-                  <input type="text" value={formArea.nombre} onChange={e => setFormArea({...formArea, nombre: e.target.value})} required />
+                  <label>Nombre de la Unidad/Área</label>
+                  <input type="text" placeholder="Ej: Ingeniería" value={formArea.nombre} onChange={e => setFormArea({...formArea, nombre: e.target.value})} required />
                 </div>
                 <div className="field">
-                  <label>Contratista</label>
+                  <label>Pertenece a Contratista</label>
                   <select value={formArea.contratista_id} onChange={e => setFormArea({...formArea, contratista_id: e.target.value})} required>
-                    <option value="">Seleccione...</option>
-                    {contratistas.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
+                    <option value="">Seleccione empresa...</option>
+                    {contratistas.map(c => (<option key={c.id} value={c.id}>{c.razon_social}</option>))}
                   </select>
                 </div>
-                <button type="submit" className="btn btn-primary">Crear</button>
+                <div className="form-actions"><button type="submit" className="btn btn-primary">Crear Área</button></div>
               </form>
             </section>
             <section className="panel">
               <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Área</th><th>Empresa</th><th>Estado</th></tr></thead>
+                <table className="users-table">
+                  <thead><tr><th>Área</th><th>Empresa Responsable</th><th>Estado</th></tr></thead>
                   <tbody>
                     {areas.map(a => (
                       <tr key={a.id}>
