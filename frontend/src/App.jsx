@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './index.css'
 
 function App() {
@@ -14,6 +14,49 @@ function App() {
   const [errorBd, setErrorBd] = useState(null)
   const [editandoId, setEditandoId] = useState(null)
   const [busqueda, setBusqueda] = useState('')
+
+  const API_URL = import.meta.env.VITE_API_URL || '';
+
+  // --- FUNCIONES DE CARGA (Envueltas en useCallback para evitar errores de linter) ---
+  const cargarRoles = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/roles`)
+      const data = await res.json()
+      if (Array.isArray(data)) setRoles(data)
+    } catch { setErrorBd('Error al conectar con roles') }
+  }, [API_URL]);
+
+  const cargarAreas = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/areas`)
+      const data = await res.json()
+      if (Array.isArray(data)) setAreas(data)
+    } catch { console.error('Error al cargar áreas') }
+  }, [API_URL]);
+
+  const cargarUsuarios = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/usuarios`)
+      const data = await res.json()
+      if (Array.isArray(data)) setUsuarios(data)
+      else setErrorBd(data.error || 'Error al cargar usuarios')
+    } catch { setErrorBd('El backend de usuarios está inalcanzable') }
+  }, [API_URL]);
+
+  const cargarContratistas = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/contratistas`)
+      const data = await res.json()
+      if (Array.isArray(data)) setContratistas(data)
+    } catch { console.error('Error al cargar contratistas') }
+  }, [API_URL]);
+
+  useEffect(() => {
+    const inicializar = async () => {
+      await Promise.all([cargarRoles(), cargarAreas(), cargarUsuarios(), cargarContratistas()])
+    }
+    inicializar()
+  }, [cargarRoles, cargarAreas, cargarUsuarios, cargarContratistas])
 
   // --- FORMULARIOS ---
   const [formData, setFormData] = useState({
@@ -34,52 +77,13 @@ function App() {
     contratista_id: ''
   })
 
-  const API_URL = import.meta.env.VITE_API_URL || '';
-
-  // --- CARGA DE DATOS ---
-  const cargarRoles = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/roles`)
-      const data = await res.json()
-      if (Array.isArray(data)) setRoles(data)
-    } catch { setErrorBd('Error al conectar con roles') }
+  const limpiarFormularios = () => {
+    setFormData({ rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456' })
+    setFormContratista({ razon_social: '', rut: '' })
+    setEditandoId(null)
   }
 
-  const cargarAreas = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/areas`)
-      const data = await res.json()
-      if (Array.isArray(data)) setAreas(data)
-    } catch { console.error('Error al cargar áreas') }
-  }
-
-  const cargarUsuarios = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/usuarios`)
-      const data = await res.json()
-      if (Array.isArray(data)) setUsuarios(data)
-      else setErrorBd(data.error || 'Error al cargar usuarios')
-    } catch { setErrorBd('El backend de usuarios está inalcanzable') }
-  }
-
-  const cargarContratistas = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/contratistas`)
-      const data = await res.json()
-      if (Array.isArray(data)) setContratistas(data)
-    } catch { console.error('Error al cargar contratistas') }
-  }
-
-  useEffect(() => {
-    const inicializar = async () => {
-      await Promise.all([cargarRoles(), cargarAreas(), cargarUsuarios(), cargarContratistas()])
-    }
-    inicializar()
-  }, [])
-
-
-  // --- MANEJADORES DE ENVÍO (SUBMITS) ---
-
+  // --- MANEJADORES ---
   const handleSubmitUsuario = async (e) => {
     e.preventDefault()
     try {
@@ -119,8 +123,7 @@ function App() {
   const handleSubmitArea = async (e) => {
     e.preventDefault()
     try {
-      const url = `${API_URL}/api/areas`
-      const response = await fetch(url, {
+      const response = await fetch(`${API_URL}/api/areas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -139,12 +142,6 @@ function App() {
     if (!window.confirm("¿Desactivar contratista?")) return
     await fetch(`${API_URL}/api/contratistas/${id}`, { method: 'DELETE' })
     cargarContratistas()
-  }
-
-  const limpiarFormularios = () => {
-    setFormData({ rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456' })
-    setFormContratista({ razon_social: '', rut: '' })
-    setEditandoId(null)
   }
 
   // --- FILTROS ---
@@ -168,12 +165,10 @@ function App() {
             className={`nav-item ${seccionActual === 'usuarios' ? 'active' : ''}`}
             onClick={() => { setSeccionActual('usuarios'); limpiarFormularios(); }}
           > Usuarios </button>
-          
           <button 
             className={`nav-item ${seccionActual === 'contratistas' ? 'active' : ''}`}
             onClick={() => { setSeccionActual('contratistas'); limpiarFormularios(); }}
           > Contratistas </button>
-
           <button 
             className={`nav-item ${seccionActual === 'areas' ? 'active' : ''}`}
             onClick={() => { setSeccionActual('areas'); limpiarFormularios(); }}
@@ -183,20 +178,18 @@ function App() {
 
       <main className="content">
         <header className="content-header">
-          <h1>
-            {seccionActual === 'usuarios' && 'Gestión de Usuarios'}
-            {seccionActual === 'contratistas' && 'Empresas Contratistas'}
-            {seccionActual === 'areas' && 'Áreas de Trabajo'}
-          </h1>
-          <p>
-            {seccionActual === 'usuarios' && 'Administración de accesos'}
-            {seccionActual === 'contratistas' && 'Catálogo base de organizaciones (HU-03)'}
-            {seccionActual === 'areas' && 'Departamentos por empresa (HU-04)'}
-          </p>
+          <h1>{seccionActual === 'usuarios' ? 'Gestión de Usuarios' : seccionActual === 'contratistas' ? 'Empresas Contratistas' : 'Áreas de Trabajo'}</h1>
+          <div className="search-bar">
+            <input 
+              type="text" 
+              placeholder="Buscar por nombre..." 
+              value={busqueda} 
+              onChange={(e) => setBusqueda(e.target.value)} 
+            />
+          </div>
         </header>
 
         {errorBd && <div className="alert-error"><strong>Error:</strong> {errorBd}</div>}
-
 
         {seccionActual === 'usuarios' && (
           <>
@@ -241,7 +234,7 @@ function App() {
               </div>
               <div className="table-wrap">
                 <table className="users-table">
-                  <thead><tr><th>Nombre Completo</th><th>Correo</th><th>Rol</th><th>Área</th></tr></thead>
+                  <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Área</th></tr></thead>
                   <tbody>
                     {listaUsuariosFiltrada.map(u => (
                       <tr key={u.id}>
@@ -258,8 +251,6 @@ function App() {
           </>
         )}
 
-
-
         {seccionActual === 'contratistas' && (
           <>
             <section className="panel">
@@ -273,12 +264,12 @@ function App() {
                   <label>RUT</label>
                   <input type="text" value={formContratista.rut} onChange={e => setFormContratista({...formContratista, rut: e.target.value})} required />
                 </div>
-                <div className="form-actions"><button type="submit" className="btn btn-primary">Guardar Empresa</button></div>
+                <div className="form-actions"><button type="submit" className="btn btn-primary">Guardar</button></div>
               </form>
             </section>
             <section className="panel">
               <div className="table-wrap">
-                <table className="users-table">
+                <table>
                   <thead><tr><th>ID</th><th>Razón Social</th><th>RUT</th><th>Acciones</th></tr></thead>
                   <tbody>
                     {contratistas.map(c => (
@@ -296,45 +287,29 @@ function App() {
           </>
         )}
 
-   
         {seccionActual === 'areas' && (
           <>
             <section className="panel">
-              <div className="panel-top"><h3>Registrar Nueva Área</h3></div>
+              <div className="panel-top"><h3>Nueva Área</h3></div>
               <form onSubmit={handleSubmitArea} className="form-grid">
                 <div className="field">
-                  <label>Nombre de la Unidad/Área</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ej: Ingeniería de Suelos" 
-                    value={formArea.nombre} 
-                    onChange={e => setFormArea({...formArea, nombre: e.target.value})} 
-                    required 
-                  />
+                  <label>Nombre</label>
+                  <input type="text" value={formArea.nombre} onChange={e => setFormArea({...formArea, nombre: e.target.value})} required />
                 </div>
                 <div className="field">
-                  <label>Pertenece a Contratista</label>
-                  <select 
-                    value={formArea.contratista_id} 
-                    onChange={e => setFormArea({...formArea, contratista_id: e.target.value})} 
-                    required
-                  >
-                    <option value="">Seleccione empresa...</option>
-                    {contratistas.map(c => (
-                      <option key={c.id} value={c.id}>{c.razon_social}</option>
-                    ))}
+                  <label>Contratista</label>
+                  <select value={formArea.contratista_id} onChange={e => setFormArea({...formArea, contratista_id: e.target.value})} required>
+                    <option value="">Seleccione...</option>
+                    {contratistas.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
                   </select>
                 </div>
-                <div className="form-actions">
-                  <button type="submit" className="btn btn-primary">Crear Área</button>
-                </div>
+                <button type="submit" className="btn btn-primary">Crear</button>
               </form>
             </section>
-
             <section className="panel">
               <div className="table-wrap">
-                <table className="users-table">
-                  <thead><tr><th>Área</th><th>Empresa Responsable</th><th>Estado</th></tr></thead>
+                <table>
+                  <thead><tr><th>Área</th><th>Empresa</th><th>Estado</th></tr></thead>
                   <tbody>
                     {areas.map(a => (
                       <tr key={a.id}>
