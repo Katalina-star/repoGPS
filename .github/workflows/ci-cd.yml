@@ -107,7 +107,7 @@ jobs:
           cache-to: type=inline
 
       # ============================================
-      # Build ms-mantenedor (NUEVO)
+      # Build ms-mantenedor
       # ============================================
       - name: Construir y Subir Backend Mantenedor
         uses: docker/build-push-action@v5
@@ -116,6 +116,18 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-mantenedor:latest
           cache-from: type=registry,ref=ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-mantenedor:latest
+          cache-to: type=inline
+
+      # ============================================
+      # Build ms-expedientes
+      # ============================================
+      - name: Construir y Subir Backend Expedientes
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/ms-expedientes
+          push: true
+          tags: ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-expedientes:latest
+          cache-from: type=registry,ref=ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-expedientes:latest
           cache-to: type=inline
 
   # ==========================================
