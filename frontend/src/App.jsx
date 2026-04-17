@@ -51,6 +51,7 @@ function App() {
     } catch { console.error('Error al cargar contratistas') }
   }, [API_URL]);
 
+  // Se incluyen todas las dependencias para que el pipeline pase sin advertencias
   useEffect(() => {
     const inicializar = async () => {
       await Promise.all([cargarRoles(), cargarAreas(), cargarUsuarios(), cargarContratistas()])
@@ -134,7 +135,6 @@ function App() {
 
   return (
     <div className="layout">
-      {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">GS</div>
@@ -178,7 +178,6 @@ function App() {
 
         {errorBd && <div className="alert-error"><strong>Error:</strong> {errorBd}</div>}
 
-        {/* --- SECCIÓN USUARIOS --- */}
         {seccionActual === 'usuarios' && (
           <div key="usuarios-view">
             <section className="panel">
@@ -239,7 +238,6 @@ function App() {
           </div>
         )}
 
-        {/* --- SECCIÓN CONTRATISTAS --- */}
         {seccionActual === 'contratistas' && (
           <div key="contratistas-view">
             <section className="panel">
@@ -282,7 +280,6 @@ function App() {
           </div>
         )}
 
-        {/* --- SECCIÓN ÁREAS --- */}
         {seccionActual === 'areas' && (
           <div key="areas-view">
             <section className="panel">
