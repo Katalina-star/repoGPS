@@ -34,6 +34,22 @@ services:
       - app-network
 
   # ============================================
+  # Base de datos de Expedientes (NUEVA)
+  # ============================================
+  db_expedientes:
+    image: postgres:15
+    container_name: db_expedientes
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: db_expedientes
+    volumes:
+      - ./database/init_expedientes.sql:/docker-entrypoint-initdb.d/init_expedientes.sql
+      - pgdata_expedientes:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # ============================================
   # Microservicio Usuarios (refactorizado)
   # ============================================
   ms-usuarios:
@@ -73,6 +89,26 @@ services:
       - app-network
 
   # ============================================
+  # Microservicio Expedientes (NUEVO)
+  # ============================================
+  ms-expedientes:
+    build: ./backend/ms-expedientes
+    container_name: ms-expedientes
+    environment:
+      - DB_USER=postgres
+      - DB_HOST=db_expedientes
+      - DB_NAME=db_expedientes
+      - DB_PASSWORD=password123
+      - DB_PORT=5432
+      - PORT=3002
+      - MS_MANTENEDOR_URL=http://ms-mantenedor:3001
+    depends_on:
+      - db_expedientes
+      - ms-mantenedor
+    networks:
+      - app-network
+
+  # ============================================
   # Frontend (existente)
   # ============================================
   frontend:
@@ -96,12 +132,14 @@ services:
       - frontend
       - ms-usuarios
       - ms-mantenedor
+      - ms-expedientes
     networks:
       - app-network
 
 volumes:
   pgdata_usuarios:
   pgdata_mantenedor:
+  pgdata_expedientes:
 
 networks:
   app-network:
