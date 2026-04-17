@@ -76,7 +76,7 @@ function App() {
     }
     inicializar()
   }, [])
-  
+
 
   // --- MANEJADORES DE ENVÍO (SUBMITS) ---
 
@@ -197,7 +197,7 @@ function App() {
 
         {errorBd && <div className="alert-error"><strong>Error:</strong> {errorBd}</div>}
 
-        /* --- SECCIÓN USUARIOS --- */
+
         {seccionActual === 'usuarios' && (
           <>
             <section className="panel">
@@ -259,7 +259,7 @@ function App() {
         )}
 
 
-        /* --- SECCIÓN CONTRATISTAS --- */
+
         {seccionActual === 'contratistas' && (
           <>
             <section className="panel">
