@@ -42,7 +42,7 @@ CREATE TABLE documentos (
     expediente_id INTEGER REFERENCES expedientes(id) ON DELETE CASCADE,
     nombre_archivo VARCHAR(255) NOT NULL,
     ruta_archivo VARCHAR(500) NOT NULL,
-    tipo_mime VARCHAR(50),
+    tipo_mime VARCHAR(100),
     tamano_bytes INTEGER,
     fecha_upload TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     estado_activo BOOLEAN DEFAULT true
