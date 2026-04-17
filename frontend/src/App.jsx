@@ -17,7 +17,7 @@ function App() {
 
   const API_URL = import.meta.env.VITE_API_URL || '';
 
-  // ---  FUNCIONES DE CARGA (Con useCallback para el Pipeline) ---
+  // ---  FUNCIONES DE CARGA ---
   const cargarRoles = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/roles`)
@@ -60,22 +60,11 @@ function App() {
 
   // ---  FORMULARIOS ---
   const [formData, setFormData] = useState({
-    rol_id: '',
-    area_id: '',
-    nombre_completo: '',
-    correo: '',
-    password_hash: '123456'
+    rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456'
   })
 
-  const [formContratista, setFormContratista] = useState({
-    razon_social: '',
-    rut: ''
-  })
-
-  const [formArea, setFormArea] = useState({
-    nombre: '',
-    contratista_id: ''
-  })
+  const [formContratista, setFormContratista] = useState({ razon_social: '', rut: '' })
+  const [formArea, setFormArea] = useState({ nombre: '', contratista_id: '' })
 
   const limpiarFormularios = () => {
     setFormData({ rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456' })
@@ -99,9 +88,7 @@ function App() {
           area_id: Number(formData.area_id)
         })
       })
-      if (response.ok) {
-        limpiarFormularios(); cargarUsuarios()
-      }
+      if (response.ok) { limpiarFormularios(); cargarUsuarios(); }
     } catch { alert('Error al guardar usuario') }
   }
 
@@ -115,9 +102,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formContratista)
       })
-      if (response.ok) {
-        limpiarFormularios(); cargarContratistas();
-      }
+      if (response.ok) { limpiarFormularios(); cargarContratistas(); }
     } catch { alert('Error al guardar contratista') }
   }
 
@@ -132,10 +117,7 @@ function App() {
           contratista_id: Number(formArea.contratista_id)
         })
       })
-      if (response.ok) {
-        setFormArea({ nombre: '', contratista_id: '' });
-        cargarAreas();
-      }
+      if (response.ok) { setFormArea({ nombre: '', contratista_id: '' }); cargarAreas(); }
     } catch { alert('Error al guardar área') }
   }
 
@@ -145,14 +127,13 @@ function App() {
     cargarContratistas()
   }
 
-  // --- 6. FILTROS ---
+  // --- FILTROS ---
   const listaUsuariosFiltrada = usuarios
     .filter(u => tabActiva === 'activos' ? u.estado_activo : !u.estado_activo)
     .filter(u => u.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()))
 
   return (
     <div className="layout">
-
       {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="brand">
@@ -188,7 +169,7 @@ function App() {
           <div className="search-bar">
             <input 
               type="text" 
-              placeholder="Buscar por nombre..." 
+              placeholder="Buscar..." 
               value={busqueda} 
               onChange={(e) => setBusqueda(e.target.value)} 
             />
@@ -199,7 +180,7 @@ function App() {
 
         {/* --- SECCIÓN USUARIOS --- */}
         {seccionActual === 'usuarios' && (
-          <>
+          <div key="usuarios-view">
             <section className="panel">
               <div className="panel-top"><h3>{editandoId ? 'Modificar' : 'Registrar'} Usuario</h3></div>
               <form onSubmit={handleSubmitUsuario} className="form-grid">
@@ -255,12 +236,12 @@ function App() {
                 </table>
               </div>
             </section>
-          </>
+          </div>
         )}
 
         {/* --- SECCIÓN CONTRATISTAS --- */}
         {seccionActual === 'contratistas' && (
-          <>
+          <div key="contratistas-view">
             <section className="panel">
               <div className="panel-top"><h3>{editandoId ? 'Modificar' : 'Nuevo'} Contratista</h3></div>
               <form onSubmit={handleSubmitContratista} className="form-grid">
@@ -272,7 +253,7 @@ function App() {
                   <label>RUT</label>
                   <input type="text" value={formContratista.rut} onChange={e => setFormContratista({...formContratista, rut: e.target.value})} required />
                 </div>
-                <div className="form-actions">
+                <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
                     <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Guardar Empresa'}</button>
                     {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormularios}>Cancelar</button>}
                 </div>
@@ -298,12 +279,12 @@ function App() {
                 </table>
               </div>
             </section>
-          </>
+          </div>
         )}
 
         {/* --- SECCIÓN ÁREAS --- */}
         {seccionActual === 'areas' && (
-          <>
+          <div key="areas-view">
             <section className="panel">
               <div className="panel-top"><h3>Registrar Nueva Área</h3></div>
               <form onSubmit={handleSubmitArea} className="form-grid">
@@ -318,7 +299,7 @@ function App() {
                     {contratistas.map(c => (<option key={c.id} value={c.id}>{c.razon_social}</option>))}
                   </select>
                 </div>
-                <div className="form-actions"><button type="submit" className="btn btn-primary">Crear Área</button></div>
+                <div className="form-actions" style={{ gridColumn: '1 / -1' }}><button type="submit" className="btn btn-primary">Crear Área</button></div>
               </form>
             </section>
             <section className="panel">
@@ -337,7 +318,7 @@ function App() {
                 </table>
               </div>
             </section>
-          </>
+          </div>
         )}
       </main>
     </div>
