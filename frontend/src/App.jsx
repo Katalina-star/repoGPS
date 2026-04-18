@@ -14,21 +14,40 @@ function App() {
   const [roles, setRoles] = useState([])
   const [areas, setAreas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [contratistas, setContratistas] = useState([])
+  const [disciplinas, setDisciplinas] = useState([])
   
+  const [seccionActual, setSeccionActual] = useState('usuarios')
   const [tabActiva, setTabActiva] = useState('activos') 
   const [errorBd, setErrorBd] = useState(null)
   const [editandoId, setEditandoId] = useState(null)
   const [busqueda, setBusqueda] = useState('')
 
   const [formData, setFormData] = useState({
-    rol_id: '',
-    area_id: '',
-    nombre_completo: '',
-    correo: '',
-    password_hash: '123456'
+    rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456'
   })
+  const [formContratista, setFormContratista] = useState({ razon_social: '', rut: '' })
+  const [formArea, setFormArea] = useState({ nombre: '', contratista_id: '' })
+  const [formDisciplina, setFormDisciplina] = useState({ nombre: '', area_id: '', contratista_id: '' })
 
   const API_URL = import.meta.env.VITE_API_URL || '';
+
+  // --- CARGA CONTRATISTAS, DISCIPLINAS ---
+  const cargarContratistas = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/contratistas`)
+      const data = await res.json()
+      if (Array.isArray(data)) setContratistas(data)
+    } catch { setErrorBd('Error al conectar con contratistas') }
+  }, [API_URL])
+
+  const cargarDisciplinas = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/disciplinas`)
+      const data = await res.json()
+      if (Array.isArray(data)) setDisciplinas(data)
+    } catch { setErrorBd('Error al cargar disciplinas') }
+  }, [API_URL])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,7 +67,54 @@ function App() {
       else if (usuariosData.error) setErrorBd(usuariosData.error)
     }
     fetchData()
-}, [API_URL])
+  // Cargar datos al inicio - incluye contratistas y disciplinas
+  const inicializar = useCallback(async () => {
+    const fetchData = async () => {
+      const [rolesRes, areasRes, usuariosRes] = await Promise.all([
+        fetch(`${API_URL}/api/roles`),
+        fetch(`${API_URL}/api/areas`),
+        fetch(`${API_URL}/api/usuarios`),
+      ])
+      const [rolesData, areasData, usuariosData] = await Promise.all([
+        rolesRes.json(),
+        areasRes.json(),
+        usuariosRes.json(),
+      ])
+      if (Array.isArray(rolesData)) setRoles(rolesData)
+      if (Array.isArray(areasData)) setAreas(areasData)
+      if (Array.isArray(usuariosData)) setUsuarios(usuariosData)
+      else if (usuariosData.error) setErrorBd(usuariosData.error)
+      
+      // Cargar mantenedores
+      const [contratistasRes, disciplinasRes] = await Promise.all([
+        fetch(`${API_URL}/api/contratistas`),
+        fetch(`${API_URL}/api/disciplinas`),
+      ])
+      const [contratistasData, disciplinasData] = await Promise.all([
+        contratistasRes.json(),
+        disciplinasRes.json(),
+      ])
+      if (Array.isArray(contratistasData)) setContratistas(contratistasData)
+      if (Array.isArray(disciplinasData)) setDisciplinas(disciplinasData)
+    }
+    fetchData()
+  }, [API_URL])
+
+  useEffect(() => {
+inicializar()
+  }, [inicializar])
+
+  const cargarContratistas = useCallback(async () => {
+    const res = await fetch(`${API_URL}/api/contratistas`)
+    const data = await res.json()
+    if (Array.isArray(data)) setContratistas(data)
+  }, [API_URL])
+
+  const cargarDisciplinas = useCallback(async () => {
+    const res = await fetch(`${API_URL}/api/disciplinas`)
+    const data = await res.json()
+    if (Array.isArray(data)) setDisciplinas(data)
+  }, [API_URL])
 
   const cargarUsuarios = useCallback(async () => {
     try {
@@ -184,9 +250,10 @@ function App() {
         </div>
         <nav className="sidebar-nav">
           <span className="nav-title">Gestión</span>
-          <button className="nav-item active">Usuarios</button>
-          <button className="nav-item">Roles</button>
-          <button className="nav-item">Áreas</button>
+          <button className={`nav-item ${seccionActual === 'usuarios' ? 'active' : ''}`} onClick={() => setSeccionActual('usuarios')}>Usuarios</button>
+          <button className={`nav-item ${seccionActual === 'contratistas' ? 'active' : ''}`} onClick={() => setSeccionActual('contratistas')}>Contratistas</button>
+          <button className={`nav-item ${seccionActual === 'areas' ? 'active' : ''}`} onClick={() => setSeccionActual('areas')}>Áreas</button>
+          <button className={`nav-item ${seccionActual === 'disciplinas' ? 'active' : ''}`} onClick={() => setSeccionActual('disciplinas')}>Disciplinas</button>
         </nav>
         <div className="sidebar-footer">
           <button className="logout-btn" onClick={handleLogout}>
