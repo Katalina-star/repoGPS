@@ -30,3 +30,8 @@ Thumbs.db
 *.sw?
 
 /pgdata/
+
+# Local development overrides (do not commit)
+docker-compose.local.yml
+nginx/Dockerfile
+nginx/nginx.conf
