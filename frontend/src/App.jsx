@@ -286,7 +286,7 @@ function App({ onLogout }) {
                 <input type="text" value={formContratista.rut} onChange={e => setFormContratista({...formContratista, rut: e.target.value})} required />
               </div>
               <div className="form-actions">
-                <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Guardar'}</button>
+                <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
                 {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormularios}>Cancelar</button>}
               </div>
             </form>
