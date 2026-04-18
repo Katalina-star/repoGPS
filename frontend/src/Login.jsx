@@ -30,7 +30,7 @@ function Login({ onLogin }) {
 
       localStorage.setItem("usuario", JSON.stringify(data.usuario));
       onLogin(data.usuario);
-    } catch (err) {
+    } catch {
       setError("No se pudo conectar con el servidor");
     }
   };
