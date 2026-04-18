@@ -128,6 +128,37 @@ function App() {
     cargarContratistas()
   }
 
+  // ---  MANEJADORES DE USUARIOS (EDITAR/ELIMINAR) ---
+  const handleEditar = (usuario) => {
+    setFormData({
+      rol_id: String(usuario.rol_id),
+      area_id: String(usuario.area_id),
+      nombre_completo: usuario.nombre_completo,
+      correo: usuario.correo,
+      password_hash: usuario.password_hash || '123456'
+    })
+    setEditandoId(usuario.id)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const cambiarEstadoUsuario = async (id, nuevoEstado) => {
+    const confirmacion = nuevoEstado 
+      ? '¿Deseas reactivar este usuario?' 
+      : '¿Seguro que deseas desactivar este usuario (borrado lógico)?'
+    
+    if (!window.confirm(confirmacion)) return
+
+    try {
+      const response = await fetch(`${API_URL}/api/usuarios/${id}/estado`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado_activo: nuevoEstado })
+      })
+      if (response.ok) cargarUsuarios()
+      else alert('Error al cambiar el estado')
+    } catch { alert('Error de conexión') }
+  }
+
   // --- FILTROS ---
   const listaUsuariosFiltrada = usuarios
     .filter(u => tabActiva === 'activos' ? u.estado_activo : !u.estado_activo)
@@ -229,6 +260,18 @@ function App() {
                         <td>{u.correo}</td>
                         <td><span className="role-tag">{u.rol_nombre}</span></td>
                         <td>{u.area_nombre}</td>
+                        <td>
+                          <div className="table-actions">
+                            {tabActiva === 'activos' ? (
+                              <>
+                                <button className="btn-mini btn-edit" onClick={() => handleEditar(u)}>Editar</button>
+                                <button className="btn-mini btn-danger" onClick={() => cambiarEstadoUsuario(u.id, false)}>Eliminar</button>
+                              </>
+                            ) : (
+                              <button className="btn-mini btn-success" onClick={() => cambiarEstadoUsuario(u.id, true)}>Reactivar</button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
