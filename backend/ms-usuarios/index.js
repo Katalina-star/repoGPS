@@ -1,10 +1,17 @@
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Configuración JWT
+const JWT_SECRET = process.env.JWT_SECRET || "repoGPS_jwt_secret_key_2026";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
 
 // Configuración de conexión a db_usuarios
 const pool = new Pool({
@@ -259,8 +266,81 @@ app.delete("/api/usuarios/:id", async (req, res) => {
   }
 });
 
+// ============================================
+// MIGRACIÓN: Migrar passwords a bcrypt (comentada para pruebas)
+// ============================================
+async function migrarPasswords() {
+  // Deshabilitada temporalmente - habilitar cuando sia necesaria
+  console.log("Migración de passwords deshabilitada");
+}
+
+// ============================================
+// ENDPOINTS LOGIN/LOGOUT
+// ============================================
+
+app.post("/api/logout", (req, res) => {
+  res.json({ message: "Sesión cerrada correctamente" });
+});
+
+app.post("/api/login", async (req, res) => {
+  const { correo, password } = req.body;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT u.id, u.nombre_completo, u.correo, u.password_hash, u.estado_activo, u.rol_id,
+             r.nombre AS rol_nombre
+      FROM usuarios u
+      INNER JOIN roles r ON u.rol_id = r.id
+      WHERE u.correo = $1
+      LIMIT 1
+      `,
+      [correo]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Credenciales inválidas" });
+    }
+
+    const usuario = result.rows[0];
+
+    if (!usuario.estado_activo) {
+      return res.status(403).json({ error: "Usuario inactivo" });
+    }
+
+    // Verificar con bcrypt
+    const match = await bcrypt.compare(password, usuario.password_hash);
+    if (!match) {
+      return res.status(401).json({ error: "Credenciales inválidas" });
+    }
+
+    // Generar JWT
+    const token = jwt.sign(
+      { id: usuario.id, rol_id: usuario.rol_id },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      message: "Login exitoso",
+      token,
+      usuario: {
+        id: usuario.id,
+        nombre_completo: usuario.nombre_completo,
+        correo: usuario.correo,
+        rol_id: usuario.rol_id,
+        rol_nombre: usuario.rol_nombre,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Iniciar servidor en puerto 3000
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Servidor ms-usuarios corriendo en el puerto ${PORT}`);
+  // Ejecutar migración una vez al iniciar
+  await migrarPasswords();
 });

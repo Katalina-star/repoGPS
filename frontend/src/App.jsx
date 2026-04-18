@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import Login from './Login'
 import './index.css'
 
 function App() {
+  const [usuario, setUsuario] = useState(null)
   const [roles, setRoles] = useState([])
   const [areas, setAreas] = useState([])
   const [usuarios, setUsuarios] = useState([])
@@ -21,6 +23,14 @@ function App() {
 
   const API_URL = import.meta.env.VITE_API_URL || '';
   
+  // Verificar sesión al iniciar
+  useEffect(() => {
+    const storedUsuario = localStorage.getItem('usuario')
+    if (storedUsuario) {
+      setUsuario(JSON.parse(storedUsuario))
+    }
+  }, [])
+
   const cargarRoles = async () => {
     try {
       const res = await fetch(`${API_URL}/api/roles`)
@@ -61,6 +71,21 @@ function App() {
     
     inicializarDatos()
   }, [])
+
+  const handleLogin = (user) => {
+    setUsuario(user)
+  }
+
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_URL}/api/logout`, { method: 'POST' })
+    } catch {
+      // Ignorar errores al cerrar sesión
+    }
+    localStorage.removeItem('token')
+    localStorage.removeItem('usuario')
+    setUsuario(null)
+  }
 
   const limpiarFormulario = () => {
     setFormData({
@@ -153,6 +178,11 @@ function App() {
     )
   })
 
+  // Si no hay usuario logueado, mostrar Login
+  if (!usuario) {
+    return <Login onLogin={handleLogin} />
+  }
+
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -169,6 +199,11 @@ function App() {
           <button className="nav-item">Roles</button>
           <button className="nav-item">Áreas</button>
         </nav>
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={handleLogout}>
+            Cerrar Sesión
+          </button>
+        </div>
       </aside>
 
       <main className="content">
