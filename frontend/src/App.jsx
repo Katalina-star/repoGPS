@@ -30,27 +30,27 @@ function App() {
 
   const API_URL = import.meta.env.VITE_API_URL || '';
 
-  const cargarRoles = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/roles`)
-      const data = await res.json()
-      if (Array.isArray(data)) setRoles(data)
-    } catch {
-      setErrorBd('Error al conectar con el servidor de roles')
+  useEffect(() => {
+    const fetchData = async () => {
+      const [rolesRes, areasRes, usuariosRes] = await Promise.all([
+        fetch(`${API_URL}/api/roles`),
+        fetch(`${API_URL}/api/areas`),
+        fetch(`${API_URL}/api/usuarios`),
+      ])
+      const [rolesData, areasData, usuariosData] = await Promise.all([
+        rolesRes.json(),
+        areasRes.json(),
+        usuariosRes.json(),
+      ])
+      if (Array.isArray(rolesData)) setRoles(rolesData)
+      if (Array.isArray(areasData)) setAreas(areasData)
+      if (Array.isArray(usuariosData)) setUsuarios(usuariosData)
+      else if (usuariosData.error) setErrorBd(usuariosData.error)
     }
-  }
+    fetchData()
+}, [API_URL])
 
-  const cargarAreas = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/areas`)
-      const data = await res.json()
-      if (Array.isArray(data)) setAreas(data)
-    } catch {
-      console.error('Error al cargar áreas')
-    }
-  }
-
-  const cargarUsuarios = async () => {
+  const cargarUsuarios = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/usuarios`)
       const data = await res.json()
@@ -59,14 +59,7 @@ function App() {
     } catch {
       setErrorBd('El backend está apagado o inalcanzable')
     }
-  }
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    cargarRoles()
-    cargarAreas()
-    cargarUsuarios()
-  }, [])
+  }, [API_URL])
 
   const handleLogin = (user) => {
     setUsuario(user)
