@@ -231,7 +231,7 @@ function App({ onLogout }) {
 
       <main className="content">
         <header className="content-header">
-          <h1>Gestión de {seccionActual.charAt(0).toUpperCase() + seccionActual.slice(1)}</h1>
+          <h1>Gestión de {seccionActual === 'areas' ? 'Áreas' : seccionActual === 'contratistas' ? 'Contratistas' : seccionActual === 'disciplinas' ? 'Disciplinas' : seccionActual}</h1>
           <div className="search-box">
             <input type="text" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
           </div>
@@ -241,7 +241,7 @@ function App({ onLogout }) {
 
         <section className="panel">
           <div className="panel-top">
-            <h3>{editandoId ? 'Modificar' : 'Registrar'} {seccionActual}</h3>
+            <h3>{editandoId ? 'Modificar' : 'Registrar'} {seccionActual === 'areas' ? 'Área' : seccionActual === 'contratistas' ? 'Contratista' : seccionActual === 'disciplinas' ? 'Disciplina' : seccionActual}</h3>
           </div>
           
           {seccionActual === 'usuarios' && (
