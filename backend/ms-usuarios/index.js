@@ -11,7 +11,7 @@ app.use(express.json());
 
 // Configuración JWT
 const JWT_SECRET = process.env.JWT_SECRET || "repoGPS_jwt_secret_key_2026";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 
 // Configuración de conexión a db_usuarios
 const pool = new Pool({
