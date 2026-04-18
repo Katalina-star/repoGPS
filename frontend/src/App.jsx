@@ -292,7 +292,36 @@ function App({ onLogout }) {
                     </td>
                   </tr>
                 ))}
-                {/* Repetir estructura similar para contratistas y áreas si lo necesitas */}
+                {/* Render para CONTRATISTAS */}
+                {seccionActual === 'contratistas' && filtrarData(contratistas).map(c => (
+                  <tr key={c.id}>
+                    <td>{c.razon_social}</td>
+                    <td>{c.rut}</td>
+                    <td>
+                      <button className="btn-mini btn-edit" onClick={() => {
+                        setFormContratista({ razon_social: c.razon_social, rut: c.rut });
+                        setEditandoId(c.id);
+                      }}>Editar</button>
+                      <button className="btn-mini btn-danger" onClick={() => cambiarEstadoEntidad('contratistas', c.id, !c.estado_activo)}>
+                        {c.estado_activo ? 'Borrar' : 'Reactivar'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {/* Render para ÁREAS */}
+                {seccionActual === 'areas' && filtrarData(areas).map(a => (
+                  <tr key={a.id}>
+                    <td>{a.nombre}</td>
+                    <td>{a.contratista_nombre}</td>
+                    <td>
+                     
+                      <button className="btn-mini btn-danger" onClick={() => cambiarEstadoEntidad('areas', a.id, !a.estado_activo)}>
+                        {a.estado_activo ? 'Borrar' : 'Reactivar'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
