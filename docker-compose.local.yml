@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Override para desarrollo local - NO commitear a main
+# Uso: docker-compose -f docker-compose.yml -f docker-compose.local.yml up
+
+services:
+  # ============================================
+  # Frontend (Build local desde repositorio)
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-ui
+    environment:
+      - VITE_API_URL=http://localhost:8045
+    volumes:
+      - ./frontend/src:/app/src
+    ports:
+      - "5173:5173"
+    networks:
+      - app-network
+
+  # ============================================
+  # Nginx (Build local)
+  # ============================================
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8045:8045"
+    depends_on:
+      - frontend
+      - ms-usuarios
+      - ms-mantenedor
+      - ms-expedientes
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    name: repogps_app-network
+    external: true
