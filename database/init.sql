@@ -28,3 +28,6 @@ INSERT INTO roles (nombre) VALUES
 ('Aprobador'), 
 ('Colaborador'), 
 ('Visador');
+
+INSERT INTO usuarios (rol_id, nombre_completo, correo, password_hash)
+VALUES (1, 'Admin Prueba', 'admin@gps.com', '123456');

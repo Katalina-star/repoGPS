@@ -259,6 +259,51 @@ app.delete("/api/usuarios/:id", async (req, res) => {
   }
 });
 
+app.post("/api/login", async (req, res) => {
+  const { correo, password } = req.body;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT u.id, u.nombre_completo, u.correo, u.password_hash, u.estado_activo, u.rol_id,
+             r.nombre AS rol_nombre
+      FROM usuarios u
+      INNER JOIN roles r ON u.rol_id = r.id
+      WHERE u.correo = $1
+      LIMIT 1
+      `,
+      [correo]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Usuario no encontrado" });
+    }
+
+    const usuario = result.rows[0];
+
+    if (!usuario.estado_activo) {
+      return res.status(403).json({ error: "Usuario inactivo" });
+    }
+
+    if (usuario.password_hash !== password) {
+      return res.status(401).json({ error: "Contraseña incorrecta" });
+    }
+
+    res.json({
+      message: "Login correcto",
+      usuario: {
+        id: usuario.id,
+        nombre_completo: usuario.nombre_completo,
+        correo: usuario.correo,
+        rol_id: usuario.rol_id,
+        rol_nombre: usuario.rol_nombre,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Iniciar servidor en puerto 3000
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
