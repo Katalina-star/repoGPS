@@ -110,6 +110,7 @@ app.get("/api/areas", async (req, res) => {
       SELECT a.id, a.nombre, a.estado_activo, a.contratista_id, c.razon_social AS contratista_nombre 
       FROM areas a
       INNER JOIN contratistas c ON a.contratista_id = c.id
+      WHERE c.estado_activo = true
       ORDER BY a.id ASC
     `);
     res.json(result.rows);
@@ -198,6 +199,8 @@ app.get("/api/disciplinas", async (req, res) => {
       SELECT d.id, d.nombre, d.estado_activo, d.area_id, a.nombre AS area_nombre, a.contratista_id 
       FROM disciplinas d
       INNER JOIN areas a ON d.area_id = a.id
+      INNER JOIN contratistas c ON a.contratista_id = c.id
+      WHERE c.estado_activo = true AND a.estado_activo = true
       ORDER BY d.id ASC
     `);
     res.json(result.rows);
