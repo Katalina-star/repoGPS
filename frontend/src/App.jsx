@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Login from './Login'
 import './index.css'
 
 function App() {
-  const [usuario, setUsuario] = useState(null)
+  // Inicializar estado desde localStorage directamente (evita useEffect)
+  const [usuario, setUsuario] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('usuario')
+      return stored ? JSON.parse(stored) : null
+    }
+    return null
+  })
   const [roles, setRoles] = useState([])
   const [areas, setAreas] = useState([])
   const [usuarios, setUsuarios] = useState([])
@@ -22,14 +29,6 @@ function App() {
   })
 
   const API_URL = import.meta.env.VITE_API_URL || '';
-  
-  // Verificar sesión al iniciar
-  useEffect(() => {
-    const storedUsuario = localStorage.getItem('usuario')
-    if (storedUsuario) {
-      setUsuario(JSON.parse(storedUsuario))
-    }
-  }, [])
 
   const cargarRoles = async () => {
     try {
@@ -63,13 +62,10 @@ function App() {
   }
 
   useEffect(() => {
-    const inicializarDatos = async () => {
-      await cargarRoles()
-      await cargarAreas()
-      await cargarUsuarios()
-    }
-    
-    inicializarDatos()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    cargarRoles()
+    cargarAreas()
+    cargarUsuarios()
   }, [])
 
   const handleLogin = (user) => {
