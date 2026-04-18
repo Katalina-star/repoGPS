@@ -41,7 +41,7 @@ body {
 
 .sidebar {
   width: 260px;
-  background-color: #e11d48; /* Color de prueba: rojo brillante */
+  background-color: #7c3aed; /* Color de prueba: violeta */
   color: white;
   display: flex;
   flex-direction: column;
