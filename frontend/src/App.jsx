@@ -164,6 +164,7 @@ function App({ onLogout }) {
       })
       if (response.ok) {
         cargarUsuarios(); cargarAreas(); cargarContratistas(); cargarDisciplinas();
+        setTabActiva(nuevoEstado ? 'activos' : 'inactivos')
       }
     } catch { alert('Error de conexión') }
   }

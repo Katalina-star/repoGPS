@@ -89,6 +89,17 @@ app.delete("/api/contratistas/:id", async (req, res) => {
   }
 });
 
+app.patch("/api/contratistas/:id/estado", async (req, res) => {
+  const { id } = req.params;
+  const { estado_activo } = req.body;
+  try {
+    await pool.query("UPDATE contratistas SET estado_activo = $1 WHERE id = $2", [estado_activo, id]);
+    res.json({ message: "Estado actualizado correctamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================
 // ÁREAS
 // ============================================
@@ -167,6 +178,17 @@ app.delete("/api/areas/:id", async (req, res) => {
   }
 });
 
+app.patch("/api/areas/:id/estado", async (req, res) => {
+  const { id } = req.params;
+  const { estado_activo } = req.body;
+  try {
+    await pool.query("UPDATE areas SET estado_activo = $1 WHERE id = $2", [estado_activo, id]);
+    res.json({ message: "Estado actualizado correctamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================
   // DISCIPLINAS
   // ============================================
@@ -232,22 +254,33 @@ app.get("/api/disciplinas", async (req, res) => {
     }
   });
 
-  app.delete("/api/disciplinas/:id", async (req, res) => {
-    const { id } = req.params;
-    try {
-      await pool.query(
-        "UPDATE disciplinas SET estado_activo = false WHERE id = $1",
-        [id]
-      );
-      res.json({ message: "Disciplina eliminada lógicamente" });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+app.delete("/api/disciplinas/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query(
+      "UPDATE disciplinas SET estado_activo = false WHERE id = $1",
+      [id]
+    );
+    res.json({ message: "Disciplina eliminada lógicamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  // ============================================
-  // CATEGORÍAS
-  // ============================================
+app.patch("/api/disciplinas/:id/estado", async (req, res) => {
+  const { id } = req.params;
+  const { estado_activo } = req.body;
+  try {
+    await pool.query("UPDATE disciplinas SET estado_activo = $1 WHERE id = $2", [estado_activo, id]);
+    res.json({ message: "Estado actualizado correctamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// CATEGORÍAS
+// ============================================
 
   app.get("/api/categorias", async (req, res) => {
     try {
