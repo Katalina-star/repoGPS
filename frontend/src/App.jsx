@@ -247,12 +247,12 @@ function App() {
               <div className="panel-top table-top">
                 <div className="tabs">
                   <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
-                  <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Papelera</button>
+                  <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
                 </div>
               </div>
               <div className="table-wrap">
                 <table className="users-table">
-                  <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Área</th><th>Acciones</th></tr></thead>
+                  <thead><tr><th>Nombre Completo</th><th>Correo Electronico</th><th>Rol</th><th>Área</th></tr></thead>
                   <tbody>
                     {listaUsuariosFiltrada.map(u => (
                       <tr key={u.id}>
