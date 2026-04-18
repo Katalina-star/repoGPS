@@ -22,7 +22,7 @@ const pool = new Pool({
 app.get("/api/contratistas", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM contratistas WHERE estado_activo = true ORDER BY id ASC"
+      "SELECT * FROM contratistas ORDER BY id ASC"
     );
     res.json(result.rows);
   } catch (err) {
@@ -110,7 +110,6 @@ app.get("/api/areas", async (req, res) => {
       SELECT a.id, a.nombre, a.estado_activo, a.contratista_id, c.razon_social AS contratista_nombre 
       FROM areas a
       INNER JOIN contratistas c ON a.contratista_id = c.id
-      WHERE a.estado_activo = true 
       ORDER BY a.id ASC
     `);
     res.json(result.rows);
@@ -199,7 +198,6 @@ app.get("/api/disciplinas", async (req, res) => {
       SELECT d.id, d.nombre, d.estado_activo, d.area_id, a.nombre AS area_nombre, a.contratista_id 
       FROM disciplinas d
       INNER JOIN areas a ON d.area_id = a.id
-      WHERE d.estado_activo = true 
       ORDER BY d.id ASC
     `);
     res.json(result.rows);
