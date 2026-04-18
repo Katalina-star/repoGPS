@@ -302,7 +302,7 @@ function App({ onLogout }) {
                 <label>Empresa Contratista</label>
                 <select value={formArea.contratista_id} onChange={e => setFormArea({...formArea, contratista_id: e.target.value})} required>
                   <option value="">Seleccione...</option>
-                  {contratistas.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
+                  {contratistas.filter(c => c.estado_activo).map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
                 </select>
               </div>
               <div className="form-actions">
@@ -326,7 +326,7 @@ function App({ onLogout }) {
                   required
                 >
                   <option value="">Seleccione...</option>
-                  {contratistas.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
+                  {contratistas.filter(c => c.estado_activo).map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
                 </select>
               </div>
               <div className="field">
@@ -338,7 +338,7 @@ function App({ onLogout }) {
                   disabled={!formDisciplina.contratista_id}
                 >
                   <option value="">Seleccione...</option>
-                  {areas.filter(a => a.contratista_id === Number(formDisciplina.contratista_id)).map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                  {areas.filter(a => a.contratista_id === Number(formDisciplina.contratista_id) && a.estado_activo).map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
                 </select>
               </div>
               <div className="form-actions">
