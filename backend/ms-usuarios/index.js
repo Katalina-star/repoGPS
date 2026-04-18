@@ -308,10 +308,25 @@ app.post("/api/login", async (req, res) => {
       return res.status(403).json({ error: "Usuario inactivo" });
     }
 
-    // Verificar con bcrypt
-    const match = await bcrypt.compare(password, usuario.password_hash);
+    // Verificar password (soporta bcrypt nuevo y texto plano antiguo)
+    let match = false;
+    if (usuario.password_hash.startsWith('$2')) {
+      // Es hash bcrypt
+      match = await bcrypt.compare(password, usuario.password_hash);
+    } else {
+      // Es texto plano ( backwards compatibility)
+      match = (password === usuario.password_hash);
+    }
     if (!match) {
       return res.status(401).json({ error: "Credenciales inválidas" });
+    }
+
+    // Migrar password a bcrypt si está en texto plano
+    if (!usuario.password_hash.startsWith('$2')) {
+      await pool.query("UPDATE usuarios SET password_hash = $1 WHERE id = $2", [
+        await bcrypt.hash(password, 10),
+        usuario.id
+      ]);
     }
 
     // Generar JWT
