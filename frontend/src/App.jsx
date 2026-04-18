@@ -7,6 +7,7 @@ function App({ onLogout }) {
   const [areas, setAreas] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [contratistas, setContratistas] = useState([])
+  const [disciplinas, setDisciplinas] = useState([])
 
   const [seccionActual, setSeccionActual] = useState('usuarios') 
   const [tabActiva, setTabActiva] = useState('activos')
@@ -20,6 +21,7 @@ function App({ onLogout }) {
   })
   const [formContratista, setFormContratista] = useState({ razon_social: '', rut: '' })
   const [formArea, setFormArea] = useState({ nombre: '', contratista_id: '' })
+  const [formDisciplina, setFormDisciplina] = useState({ nombre: '', area_id: '' })
 
   const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -61,18 +63,27 @@ function App({ onLogout }) {
     } catch { console.error('Error al cargar contratistas') }
   }, [API_URL])
 
+  const cargarDisciplinas = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/disciplinas`)
+      const data = await res.json()
+      if (Array.isArray(data)) setDisciplinas(data)
+    } catch { console.error('Error al cargar disciplinas') }
+  }, [API_URL])
+
   useEffect(() => {
     const inicializar = async () => {
-      await Promise.all([cargarRoles(), cargarAreas(), cargarUsuarios(), cargarContratistas()])
+      await Promise.all([cargarRoles(), cargarAreas(), cargarUsuarios(), cargarContratistas(), cargarDisciplinas()])
     }
     inicializar()
-  }, [cargarRoles, cargarAreas, cargarUsuarios, cargarContratistas])
+  }, [cargarRoles, cargarAreas, cargarUsuarios, cargarContratistas, cargarDisciplinas])
 
   // --- MANEJADORES ---
   const limpiarFormularios = () => {
     setFormData({ rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456' })
     setFormContratista({ razon_social: '', rut: '' })
     setFormArea({ nombre: '', contratista_id: '' })
+    setFormDisciplina({ nombre: '', area_id: '' })
     setEditandoId(null)
   }
 
@@ -111,8 +122,10 @@ function App({ onLogout }) {
   const handleSubmitArea = async (e) => {
     e.preventDefault()
     try {
-      const response = await fetch(`${API_URL}/api/areas`, {
-        method: 'POST',
+      const url = editandoId ? `${API_URL}/api/areas/${editandoId}` : `${API_URL}/api/areas`
+      const method = editandoId ? 'PUT' : 'POST'
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre: formArea.nombre,
@@ -121,6 +134,23 @@ function App({ onLogout }) {
       })
       if (response.ok) { limpiarFormularios(); cargarAreas(); }
     } catch { alert('Error al guardar área') }
+  }
+
+  const handleSubmitDisciplina = async (e) => {
+    e.preventDefault()
+    try {
+      const url = editandoId ? `${API_URL}/api/disciplinas/${editandoId}` : `${API_URL}/api/disciplinas`
+      const method = editandoId ? 'PUT' : 'POST'
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: formDisciplina.nombre,
+          area_id: Number(formDisciplina.area_id)
+        })
+      })
+      if (response.ok) { limpiarFormularios(); cargarDisciplinas(); }
+    } catch { alert('Error al guardar disciplina') }
   }
 
   const cambiarEstadoEntidad = async (path, id, nuevoEstado) => {
@@ -133,9 +163,25 @@ function App({ onLogout }) {
         body: JSON.stringify({ estado_activo: nuevoEstado })
       })
       if (response.ok) {
-        cargarUsuarios(); cargarAreas(); cargarContratistas();
+        cargarUsuarios(); cargarAreas(); cargarContratistas(); cargarDisciplinas();
       }
     } catch { alert('Error de conexión') }
+  }
+
+  // --- FUNCIONES DE EDICIÓN RÁPIDA ---
+  const editarContratista = (c) => {
+    setFormContratista({ razon_social: c.razon_social, rut: c.rut })
+    setEditandoId(c.id)
+  }
+
+  const editarArea = (a) => {
+    setFormArea({ nombre: a.nombre, contratista_id: String(a.contratista_id) })
+    setEditandoId(a.id)
+  }
+
+  const editarDisciplina = (d) => {
+    setFormDisciplina({ nombre: d.nombre, area_id: String(d.area_id) })
+    setEditandoId(d.id)
   }
 
   // --- FILTROS ---
@@ -148,7 +194,9 @@ function App({ onLogout }) {
           (item.nombre_completo?.toLowerCase().includes(s)) ||
           (item.razon_social?.toLowerCase().includes(s)) ||
           (item.nombre?.toLowerCase().includes(s)) ||
-          (item.correo?.toLowerCase().includes(s))
+          (item.correo?.toLowerCase().includes(s)) ||
+          (item.area_nombre?.toLowerCase().includes(s)) ||
+          (item.contratista_nombre?.toLowerCase().includes(s))
         )
       })
   }
@@ -172,6 +220,8 @@ function App({ onLogout }) {
             onClick={() => { setSeccionActual('contratistas'); limpiarFormularios(); }}>Contratistas</button>
           <button className={`nav-item ${seccionActual === 'areas' ? 'active' : ''}`} 
             onClick={() => { setSeccionActual('areas'); limpiarFormularios(); }}>Áreas</button>
+          <button className={`nav-item ${seccionActual === 'disciplinas' ? 'active' : ''}`} 
+            onClick={() => { setSeccionActual('disciplinas'); limpiarFormularios(); }}>Disciplinas</button>
         </nav>
 
         <div className="sidebar-logout">
@@ -255,7 +305,30 @@ function App({ onLogout }) {
                   {contratistas.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
                 </select>
               </div>
-              <button type="submit" className="btn btn-primary">Crear Área</button>
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
+                {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormularios}>Cancelar</button>}
+              </div>
+            </form>
+          )}
+
+          {seccionActual === 'disciplinas' && (
+            <form onSubmit={handleSubmitDisciplina} className="form-grid">
+              <div className="field">
+                <label>Nombre de la Disciplina</label>
+                <input type="text" value={formDisciplina.nombre} onChange={e => setFormDisciplina({...formDisciplina, nombre: e.target.value})} required />
+              </div>
+              <div className="field">
+                <label>Área</label>
+                <select value={formDisciplina.area_id} onChange={e => setFormDisciplina({...formDisciplina, area_id: e.target.value})} required>
+                  <option value="">Seleccione...</option>
+                  {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                </select>
+              </div>
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
+                {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormularios}>Cancelar</button>}
+              </div>
             </form>
           )}
         </section>
@@ -274,10 +347,11 @@ function App({ onLogout }) {
                   {seccionActual === 'usuarios' && (<><th>Nombre</th><th>Correo</th><th>Rol</th><th>Área</th></>)}
                   {seccionActual === 'contratistas' && (<><th>Razón Social</th><th>RUT</th></>)}
                   {seccionActual === 'areas' && (<><th>Área</th><th>Empresa</th></>)}
+                  {seccionActual === 'disciplinas' && (<><th>Disciplina</th><th>Área</th></>)}
                   <th>Acciones</th>
                 </tr>
               </thead>
-              <tbody>
+<tbody>
                 {seccionActual === 'usuarios' && filtrarData(usuarios).map(u => (
                   <tr key={u.id}>
                     <td>{u.nombre_completo}</td><td>{u.correo}</td>
@@ -292,7 +366,36 @@ function App({ onLogout }) {
                     </td>
                   </tr>
                 ))}
-  
+
+                {seccionActual === 'contratistas' && filtrarData(contratistas).map(c => (
+                  <tr key={c.id}>
+                    <td>{c.razon_social}</td><td>{c.rut}</td>
+                    <td>
+                      <button className="btn-mini btn-edit" onClick={() => editarContratista(c)}>Editar</button>
+                      <button className="btn-mini btn-danger" onClick={() => cambiarEstadoEntidad('contratistas', c.id, !c.estado_activo)}>{c.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                    </td>
+                  </tr>
+                ))}
+
+                {seccionActual === 'areas' && filtrarData(areas).map(a => (
+                  <tr key={a.id}>
+                    <td>{a.nombre}</td><td>{a.contratista_nombre || 'No asignada'}</td>
+                    <td>
+                      <button className="btn-mini btn-edit" onClick={() => editarArea(a)}>Editar</button>
+                      <button className="btn-mini btn-danger" onClick={() => cambiarEstadoEntidad('areas', a.id, !a.estado_activo)}>{a.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                    </td>
+                  </tr>
+                ))}
+
+                {seccionActual === 'disciplinas' && filtrarData(disciplinas).map(d => (
+                  <tr key={d.id}>
+                    <td>{d.nombre}</td><td>{d.area_nombre || 'No asignada'}</td>
+                    <td>
+                      <button className="btn-mini btn-edit" onClick={() => editarDisciplina(d)}>Editar</button>
+                      <button className="btn-mini btn-danger" onClick={() => cambiarEstadoEntidad('disciplinas', d.id, !d.estado_activo)}>{d.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
