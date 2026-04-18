@@ -21,7 +21,7 @@ function App({ onLogout }) {
   })
   const [formContratista, setFormContratista] = useState({ razon_social: '', rut: '' })
   const [formArea, setFormArea] = useState({ nombre: '', contratista_id: '' })
-  const [formDisciplina, setFormDisciplina] = useState({ nombre: '', area_id: '' })
+  const [formDisciplina, setFormDisciplina] = useState({ nombre: '', area_id: '', contratista_id: '' })
 
   const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -83,7 +83,7 @@ function App({ onLogout }) {
     setFormData({ rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456' })
     setFormContratista({ razon_social: '', rut: '' })
     setFormArea({ nombre: '', contratista_id: '' })
-    setFormDisciplina({ nombre: '', area_id: '' })
+    setFormDisciplina({ nombre: '', area_id: '', contratista_id: '' })
     setEditandoId(null)
   }
 
@@ -180,7 +180,7 @@ function App({ onLogout }) {
   }
 
   const editarDisciplina = (d) => {
-    setFormDisciplina({ nombre: d.nombre, area_id: String(d.area_id) })
+    setFormDisciplina({ nombre: d.nombre, area_id: String(d.area_id), contratista_id: String(d.contratista_id || '') })
     setEditandoId(d.id)
   }
 
@@ -319,10 +319,26 @@ function App({ onLogout }) {
                 <input type="text" value={formDisciplina.nombre} onChange={e => setFormDisciplina({...formDisciplina, nombre: e.target.value})} required />
               </div>
               <div className="field">
-                <label>Área</label>
-                <select value={formDisciplina.area_id} onChange={e => setFormDisciplina({...formDisciplina, area_id: e.target.value})} required>
+                <label>Contratista</label>
+                <select 
+                  value={formDisciplina.contratista_id} 
+                  onChange={e => setFormDisciplina({...formDisciplina, contratista_id: e.target.value, area_id: ''})} 
+                  required
+                >
                   <option value="">Seleccione...</option>
-                  {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                  {contratistas.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label>Área</label>
+                <select 
+                  value={formDisciplina.area_id} 
+                  onChange={e => setFormDisciplina({...formDisciplina, area_id: e.target.value})} 
+                  required
+                  disabled={!formDisciplina.contratista_id}
+                >
+                  <option value="">Seleccione...</option>
+                  {areas.filter(a => a.contratista_id === Number(formDisciplina.contratista_id)).map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
                 </select>
               </div>
               <div className="form-actions">

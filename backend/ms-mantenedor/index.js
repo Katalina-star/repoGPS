@@ -171,20 +171,20 @@ app.delete("/api/areas/:id", async (req, res) => {
   // DISCIPLINAS
   // ============================================
 
-  app.get("/api/disciplinas", async (req, res) => {
-    try {
-      const result = await pool.query(`
-        SELECT d.id, d.nombre, d.estado_activo, d.area_id, a.nombre AS area_nombre 
-        FROM disciplinas d
-        INNER JOIN areas a ON d.area_id = a.id
-        WHERE d.estado_activo = true 
-        ORDER BY d.id ASC
-      `);
-      res.json(result.rows);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+app.get("/api/disciplinas", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT d.id, d.nombre, d.estado_activo, d.area_id, a.nombre AS area_nombre, a.contratista_id 
+      FROM disciplinas d
+      INNER JOIN areas a ON d.area_id = a.id
+      WHERE d.estado_activo = true 
+      ORDER BY d.id ASC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
   app.get("/api/disciplinas/:id", async (req, res) => {
     const { id } = req.params;
