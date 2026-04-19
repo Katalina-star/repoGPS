@@ -20,6 +20,7 @@ function App({ onLogout }) {
     rol_id: '', area_id: '', nombre_completo: '', correo: '', password_hash: '123456'
   })
   const [formContratista, setFormContratista] = useState({ razon_social: '', rut: '' })
+  const [errorRut, setErrorRut] = useState('')
   const [formArea, setFormArea] = useState({ nombre: '', contratista_id: '' })
   const [formDisciplina, setFormDisciplina] = useState({ nombre: '', area_id: '', contratista_id: '' })
 
@@ -93,6 +94,7 @@ function App({ onLogout }) {
     setFormContratista({ razon_social: '', rut: '' })
     setFormArea({ nombre: '', contratista_id: '' })
     setFormDisciplina({ nombre: '', area_id: '', contratista_id: '' })
+    setErrorRut('')
     setEditandoId(null)
   }
 
@@ -116,6 +118,7 @@ function App({ onLogout }) {
 
   const handleSubmitContratista = async (e) => {
     e.preventDefault()
+    setErrorRut('')
     try {
       const url = editandoId ? `${API_URL}/api/contratistas/${editandoId}` : `${API_URL}/api/contratistas`
       const method = editandoId ? 'PUT' : 'POST'
@@ -124,7 +127,17 @@ function App({ onLogout }) {
         headers: getAuthHeaders(),
         body: JSON.stringify(formContratista)
       })
-      if (response.ok) { limpiarFormularios(); cargarContratistas(); }
+      if (response.ok) { 
+        limpiarFormularios(); 
+        cargarContratistas(); 
+      } else {
+        const data = await response.json()
+        if (data.error && data.error.includes('RUT')) {
+          setErrorRut(data.error)
+        } else {
+          alert('Error al guardar contratista')
+        }
+      }
     } catch { alert('Error al guardar contratista') }
   }
 
@@ -292,7 +305,8 @@ function App({ onLogout }) {
               </div>
               <div className="field">
                 <label>RUT</label>
-                <input type="text" value={formContratista.rut} onChange={e => setFormContratista({...formContratista, rut: e.target.value})} required />
+                <input type="text" value={formContratista.rut} onChange={e => { setFormContratista({...formContratista, rut: e.target.value}); setErrorRut(''); }} required />
+                {errorRut && <span style={{ color: '#e74c3c', fontSize: '12px', display: 'block', marginTop: '4px' }}>{errorRut}</span>}
               </div>
               <div className="form-actions">
                 <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
