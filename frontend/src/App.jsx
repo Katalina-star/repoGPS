@@ -25,10 +25,19 @@ function App({ onLogout }) {
 
   const API_URL = import.meta.env.VITE_API_URL || ''
 
+  // Helper para incluir token en todas las peticiones
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token')
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  }
+
   // --- FUNCIONES DE CARGA ---
   const cargarRoles = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/roles`)
+      const res = await fetch(`${API_URL}/api/roles`, { headers: getAuthHeaders() })
       const data = await res.json()
       if (Array.isArray(data)) setRoles(data)
     } catch { setErrorBd('Error al conectar con roles') }
@@ -36,7 +45,7 @@ function App({ onLogout }) {
 
   const cargarAreas = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/areas`)
+      const res = await fetch(`${API_URL}/api/areas`, { headers: getAuthHeaders() })
       const data = await res.json()
       if (Array.isArray(data)) setAreas(data)
     } catch { console.error('Error al cargar áreas') }
@@ -44,7 +53,7 @@ function App({ onLogout }) {
 
   const cargarUsuarios = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/usuarios`)
+      const res = await fetch(`${API_URL}/api/usuarios`, { headers: getAuthHeaders() })
       const data = await res.json()
       if (Array.isArray(data)) {
         setUsuarios(data)
@@ -57,7 +66,7 @@ function App({ onLogout }) {
 
   const cargarContratistas = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/contratistas`)
+      const res = await fetch(`${API_URL}/api/contratistas`, { headers: getAuthHeaders() })
       const data = await res.json()
       if (Array.isArray(data)) setContratistas(data)
     } catch { console.error('Error al cargar contratistas') }
@@ -65,7 +74,7 @@ function App({ onLogout }) {
 
   const cargarDisciplinas = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/disciplinas`)
+      const res = await fetch(`${API_URL}/api/disciplinas`, { headers: getAuthHeaders() })
       const data = await res.json()
       if (Array.isArray(data)) setDisciplinas(data)
     } catch { console.error('Error al cargar disciplinas') }
@@ -94,7 +103,7 @@ function App({ onLogout }) {
       const method = editandoId ? 'PUT' : 'POST'
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...formData,
           rol_id: Number(formData.rol_id),
@@ -112,7 +121,7 @@ function App({ onLogout }) {
       const method = editandoId ? 'PUT' : 'POST'
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(formContratista)
       })
       if (response.ok) { limpiarFormularios(); cargarContratistas(); }
@@ -126,7 +135,7 @@ function App({ onLogout }) {
       const method = editandoId ? 'PUT' : 'POST'
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           nombre: formArea.nombre,
           contratista_id: Number(formArea.contratista_id)
@@ -143,7 +152,7 @@ function App({ onLogout }) {
       const method = editandoId ? 'PUT' : 'POST'
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           nombre: formDisciplina.nombre,
           area_id: Number(formDisciplina.area_id)
@@ -159,7 +168,7 @@ function App({ onLogout }) {
     try {
       const response = await fetch(`${API_URL}/api/${path}/${id}/estado`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ estado_activo: nuevoEstado })
       })
       if (response.ok) {

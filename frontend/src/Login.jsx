@@ -29,6 +29,7 @@ function Login({ onLogin }) {
       }
 
       localStorage.setItem("usuario", JSON.stringify(data.usuario));
+      localStorage.setItem("token", data.token);
       onLogin(data.usuario);
     } catch {
       setError("No se pudo conectar con el servidor");

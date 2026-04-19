@@ -12,6 +12,7 @@ function Root() {
 
   const handleLogout = () => {
     localStorage.removeItem('usuario')
+    localStorage.removeItem('token')
     setUsuario(null)
   }
 
