@@ -48,6 +48,20 @@ app.get("/api/contratistas/:id", async (req, res) => {
 
 app.post("/api/contratistas", async (req, res) => {
   const { razon_social, rut } = req.body;
+  
+  // Validar que no existe otro contratista con el mismo RUT
+  try {
+    const existeRut = await pool.query(
+      "SELECT id FROM contratistas WHERE rut = $1",
+      [rut]
+    );
+    if (existeRut.rows.length > 0) {
+      return res.status(400).json({ error: "Ya existe un contratista registrado con este RUT" });
+    }
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+
   try {
     const result = await pool.query(
       "INSERT INTO contratistas (razon_social, rut) VALUES ($1, $2) RETURNING *",
