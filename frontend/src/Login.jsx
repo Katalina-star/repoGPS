@@ -25,6 +25,17 @@ function Login({ onLogin }) {
 
       const data = await res.json();
 
+      // Verificar si es el caso especial de "vista no implementada" (respuesta 403 del backend)
+      if (res.status === 403 && data.rol_nombre) {
+        setVistaNoImplementada({
+          rol: data.rol_nombre,
+          mensaje: data.mensaje
+        });
+        setCorreo("");
+        setPassword("");
+        return;
+      }
+
       if (!res.ok) {
         setError(data.error || "Error al iniciar sesión");
         return;
