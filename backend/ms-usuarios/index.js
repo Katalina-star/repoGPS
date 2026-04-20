@@ -336,9 +336,21 @@ app.post("/api/login", async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    // Verificar si es ADMIN (rol_id = 1)
+    if (usuario.rol_id !== 1) {
+      return res.status(403).json({
+        error: "Vista no implementada",
+        mensaje: `Tu vista de ${usuario.rol_nombre} aún no está implementada`,
+        rol_id: usuario.rol_id,
+        rol_nombre: usuario.rol_nombre,
+        acceso_permitido: false
+      });
+    }
+
     res.json({
       message: "Login exitoso",
       token,
+      acceso_permitido: true,
       usuario: {
         id: usuario.id,
         nombre_completo: usuario.nombre_completo,
