@@ -329,23 +329,26 @@ app.post("/api/login", async (req, res) => {
       ]);
     }
 
-    // Generar JWT
+    // Generar JWT con area_id
+    // Obtener el área principal del usuario (primera asignada)
+    let areaId = null;
+    try {
+      const areaResult = await pool.query(
+        "SELECT area_id FROM usuario_area WHERE usuario_id = $1 LIMIT 1",
+        [usuario.id]
+      );
+      if (areaResult.rows.length > 0) {
+        areaId = areaResult.rows[0].area_id;
+      }
+    } catch (err) {
+      console.error("Error al obtener area_id:", err.message);
+    }
+
     const token = jwt.sign(
-      { id: usuario.id, rol_id: usuario.rol_id },
+      { id: usuario.id, rol_id: usuario.rol_id, area_id: areaId },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
-
-    // Verificar si es ADMIN (rol_id = 1)
-    if (usuario.rol_id !== 1) {
-      return res.status(403).json({
-        error: "Vista no implementada",
-        mensaje: `Tu vista de ${usuario.rol_nombre} aún no está implementada`,
-        rol_id: usuario.rol_id,
-        rol_nombre: usuario.rol_nombre,
-        acceso_permitido: false
-      });
-    }
 
     res.json({
       message: "Login exitoso",
@@ -357,6 +360,7 @@ app.post("/api/login", async (req, res) => {
         correo: usuario.correo,
         rol_id: usuario.rol_id,
         rol_nombre: usuario.rol_nombre,
+        area_id: areaId,
       },
     });
   } catch (err) {

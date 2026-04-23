@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 import { useExpedientes } from '../../hooks/useExpedientes'
 import { useApi } from '../../hooks/useApi'
 
-const Dashboard = () => {
+const Dashboard = ({ esAdmin = true }) => {
+  const { user } = useAuth()
   const { expedientes, cargarExpedientes } = useExpedientes()
   const { get } = useApi()
   const [etapasFinales, setEtapasFinales] = useState([])
@@ -24,15 +26,20 @@ const Dashboard = () => {
 
   const ahora = new Date()
 
+  // Filtrar expedientes según rol
+  const expedientesFiltrados = esAdmin
+    ? expedientes
+    : expedientes.filter(exp => exp.area_id === user?.area_id)
+
   const stats = {
-    total: expedientes.length,
+    total: expedientesFiltrados.length,
     pendiente: 0,
     enCurso: 0,
     atrasado: 0,
     terminado: 0
   }
 
-  expedientes.forEach(exp => {
+  expedientesFiltrados.forEach(exp => {
     const etapa = (exp.etapa_actual || '').toLowerCase()
     
     // Terminado: etapa es final
@@ -62,7 +69,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <h2 style={{ marginBottom: '24px', color: 'var(--text-main)' }}>
-        Dashboard
+        Dashboard {esAdmin ? '' : ` - ${user?.area_nombre || 'Mi Area'}`}
       </h2>
       
       <div className="dashboard-grid">

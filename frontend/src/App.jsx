@@ -11,9 +11,14 @@ import ProcesosPanel from './components/procesos/Procesos'
 import EtapasPanel from './components/procesos/Etapas'
 import ExpedientesPanel from './components/expedientes/Expedientes'
 import ExpedienteDetalle from './components/expedientes/ExpedienteDetalle'
+import BandejaTareas from './components/bandeja/BandejaTareas'
+
+// esAdmin: rol_id === 1
+const esAdmin = (user) => user?.rol_id === 1
 
 const titulos = {
   dashboard: 'Dashboard',
+  bandeja: 'Bandeja de Tareas',
   usuarios: 'Usuarios',
   contratistas: 'Contratistas',
   areas: 'Áreas',
@@ -23,12 +28,24 @@ const titulos = {
   expedientes: 'Expedientes'
 }
 
+// Menús por rol
+const menuAdmin = ['dashboard', 'usuarios', 'contratistas', 'areas', 'disciplinas', 'procesos', 'etapas', 'expedientes']
+const menuNoAdmin = ['dashboard', 'bandeja', 'expedientes']
+
 const AppContent = () => {
   const { user, logout, loading } = useAuth()
   const [seccionActual, setSeccionActual] = useState('dashboard')
   const [busqueda, setBusqueda] = useState('')
   const [mostrarDetalle, setMostrarDetalle] = useState(false)
   const [expedienteDetalle, setExpedienteDetalle] = useState(null)
+  const [menuItems, setMenuItems] = useState(menuAdmin)
+
+  // Actualizar menú según rol
+  useEffect(() => {
+    if (user) {
+      setMenuItems(esAdmin(user) ? menuAdmin : menuNoAdmin)
+    }
+  }, [user])
 
   const handleLogout = () => {
     logout()
@@ -47,7 +64,9 @@ const AppContent = () => {
   const renderPanel = () => {
     switch (seccionActual) {
       case 'dashboard':
-        return <Dashboard />
+        return <Dashboard esAdmin={esAdmin(user)} />
+      case 'bandeja':
+        return <BandejaTareas user={user} />
       case 'usuarios':
         return <UsuariosPanel />
       case 'contratistas':
@@ -63,7 +82,7 @@ const AppContent = () => {
       case 'expedientes':
         return <ExpedientesPanel />
       default:
-        return <Dashboard />
+        return <Dashboard esAdmin={esAdmin(user)} />
     }
   }
 
@@ -80,7 +99,10 @@ const AppContent = () => {
       <Sidebar 
         seccionActual={seccionActual} 
         onCambiarSeccion={setSeccionActual} 
-        onLogout={handleLogout} 
+        onLogout={handleLogout}
+        menuItems={menuItems}
+        titulos={titulos}
+        usuario={user}
       />
       <Content 
         titulo={titulos[seccionActual]} 

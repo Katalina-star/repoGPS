@@ -101,6 +101,25 @@ body {
   border-top: 1px solid #1e293b;
 }
 
+.user-info {
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.user-name {
+  display: block;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.user-role {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
 .logout-btn {
   width: 100%;
   padding: 10px 15px;
@@ -223,6 +242,10 @@ input:focus, select:focus {
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+.bandeja-tareas ul {
+  list-style: none;
 }
 
 .form-actions {
