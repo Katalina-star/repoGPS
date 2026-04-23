@@ -1,7 +1,26 @@
 import { useState } from "react";
+import { useAuth } from "./context/AuthContext";
 import "./login.css";
 
-function Login({ onLogin }) {
+// === MODO DESARROLLO TEMPORAL ===
+// Para testing sin backend - establecer en true
+const MODO_DESARROLLO = true
+const USER_TEST = {
+  id: 1,
+  nombre_completo: "Admin Demo",
+  correo: "admin@test.com",
+  rol_id: 1,
+  rol_nombre: "Administrador",
+  area_id: 1,
+  area_nombre: "Gerencia",
+  contratista_id: 1,
+  contratista_nombre: "Demo Empresa"
+}
+const TOKEN_TEST = "dev-token-12345"
+// ===============================
+
+function Login() {
+  const { login } = useAuth()
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,6 +33,13 @@ function Login({ onLogin }) {
     setError("");
     setVistaNoImplementada(null);
 
+    // === MODO DESARROLLO: Login directo sin backend ===
+    if (MODO_DESARROLLO) {
+      login(TOKEN_TEST, USER_TEST)
+      return
+    }
+    // =====================================================
+
     try {
       const res = await fetch(`${API_URL}/api/login`, {
         method: "POST",
@@ -25,7 +51,6 @@ function Login({ onLogin }) {
 
       const data = await res.json();
 
-      // Verificar si es el caso especial de "vista no implementada" (respuesta 403 del backend)
       if (res.status === 403 && data.rol_nombre) {
         setVistaNoImplementada({
           rol: data.rol_nombre,
@@ -41,21 +66,17 @@ function Login({ onLogin }) {
         return;
       }
 
-      // Verificar si el rol tiene acceso permitido
       if (!data.acceso_permitido) {
         setVistaNoImplementada({
           rol: data.rol_nombre,
           mensaje: data.mensaje
         });
-        // Limpiar credenciales por seguridad
         setCorreo("");
         setPassword("");
         return;
       }
 
-      localStorage.setItem("usuario", JSON.stringify(data.usuario));
-      localStorage.setItem("token", data.token);
-      onLogin(data.usuario);
+      login(data.token, data.usuario)
     } catch {
       setError("No se pudo conectar con el servidor");
     }
@@ -120,6 +141,20 @@ function Login({ onLogin }) {
             <form className="login-card" onSubmit={handleSubmit}>
               <h3>Iniciar sesión</h3>
               <p className="login-subtitle">Accede a tu cuenta</p>
+
+              {MODO_DESARROLLO && (
+                <div style={{
+                  background: '#fff3cd',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  marginBottom: '16px',
+                  fontSize: '12px',
+                  color: '#856404',
+                  border: '1px solid #ffc107'
+                }}>
+                  ⚠️ Modo desarrollo activo - clic en "Entrar" para login directo
+                </div>
+              )}
 
               <label>Correo electrónico</label>
               <input

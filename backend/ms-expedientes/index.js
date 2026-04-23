@@ -21,8 +21,29 @@ const pool = new Pool({
 
 app.get("/api/procesos", async (req, res) => {
   try {
+    const { area_id } = req.query;
+    let query = "SELECT * FROM procesos WHERE estado_activo = true";
+    let params = [];
+    
+    if (area_id) {
+      query += " AND area_id = $1";
+      params.push(area_id);
+    }
+    
+    query += " ORDER BY id ASC";
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/procesos/area/:areaId", async (req, res) => {
+  const { areaId } = req.params;
+  try {
     const result = await pool.query(
-      "SELECT * FROM procesos WHERE estado_activo = true ORDER BY id ASC"
+      "SELECT * FROM procesos WHERE area_id = $1 AND estado_activo = true ORDER BY id ASC",
+      [areaId]
     );
     res.json(result.rows);
   } catch (err) {
@@ -125,11 +146,11 @@ app.get("/api/etapas-proceso/:id", async (req, res) => {
 });
 
 app.post("/api/etapas-proceso", async (req, res) => {
-  const { proceso_id, nombre, orden, es_final } = req.body;
+  const { proceso_id, nombre, orden, es_final, requiere_aprobador, usuario_asignado_id } = req.body;
   try {
     const result = await pool.query(
-      "INSERT INTO etapas_proceso (proceso_id, nombre, orden, es_final) VALUES ($1, $2, $3, $4) RETURNING *",
-      [proceso_id, nombre, orden, es_final || false]
+      "INSERT INTO etapas_proceso (proceso_id, nombre, orden, es_final, requiere_aprobador, usuario_asignado_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [proceso_id, nombre, orden, es_final || false, requiere_aprobador || false, usuario_asignado_id || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -139,11 +160,11 @@ app.post("/api/etapas-proceso", async (req, res) => {
 
 app.put("/api/etapas-proceso/:id", async (req, res) => {
   const { id } = req.params;
-  const { proceso_id, nombre, orden, es_final } = req.body;
+  const { proceso_id, nombre, orden, es_final, requiere_aprobador, usuario_asignado_id } = req.body;
   try {
     const result = await pool.query(
-      "UPDATE etapas_proceso SET proceso_id = $1, nombre = $2, orden = $3, es_final = $4 WHERE id = $5 RETURNING *",
-      [proceso_id, nombre, orden, es_final, id]
+      "UPDATE etapas_proceso SET proceso_id = $1, nombre = $2, orden = $3, es_final = $4, requiere_aprobador = $5, usuario_asignado_id = $6 WHERE id = $7 RETURNING *",
+      [proceso_id, nombre, orden, es_final, requiere_aprobador, usuario_asignado_id, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Etapa no encontrada" });
@@ -198,8 +219,16 @@ app.get("/api/expedientes/:id", async (req, res) => {
 });
 
 app.post("/api/expedientes", async (req, res) => {
-  const { proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion } = req.body;
+  const { proceso_id, disciplina_id, subtipo_id, titulo, descripcion } = req.body;
   try {
+    // Obtener la primera etapa del proceso para asignarla automáticamente
+    const etapaResult = await pool.query(
+      "SELECT id FROM etapas_proceso WHERE proceso_id = $1 AND estado_activo = true ORDER BY orden ASC LIMIT 1",
+      [proceso_id]
+    );
+    
+    const etapa_actual_id = etapaResult.rows[0]?.id || null;
+    
     const result = await pool.query(
       `INSERT INTO expedientes (proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
@@ -216,7 +245,7 @@ app.put("/api/expedientes/:id", async (req, res) => {
   const { proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion } = req.body;
   try {
     const result = await pool.query(
-      `UPDATE expediente SET proceso_id = $1, disciplina_id = $2, subtipo_id = $3,
+      `UPDATE expedientes SET proceso_id = $1, disciplina_id = $2, subtipo_id = $3,
        etapa_actual_id = $4, titulo = $5, descripcion = $6, fecha_actualizacion = CURRENT_TIMESTAMP
        WHERE id = $7 RETURNING *`,
       [proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion, id]

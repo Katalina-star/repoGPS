@@ -19,6 +19,8 @@ CREATE TABLE etapas_proceso (
     nombre VARCHAR(100) NOT NULL,
     orden INTEGER NOT NULL, -- posición de la etapa en el flujo
     es_final BOOLEAN DEFAULT false, -- etapa final = expediente cerrado
+    requiere_aprobador BOOLEAN DEFAULT false, -- si true, necesita aprobador para avanzar
+    usuario_asignado_id INTEGER, -- Soft FK hacia db_usuarios.usuarios (ya tiene rol_id)
     estado_activo BOOLEAN DEFAULT true
 );
 
