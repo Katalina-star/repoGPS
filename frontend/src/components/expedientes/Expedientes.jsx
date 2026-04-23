@@ -3,12 +3,12 @@ import { useExpedientes } from '../../hooks/useExpedientes'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useDisciplinas } from '../../hooks/useDisciplinas'
 import { useApi } from '../../hooks/useApi'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/useAuth'
 
 const ExpedientesPanel = () => {
   const { user } = useAuth()
   const { get } = useApi()
-  const { expedientes, loading, cargarExpedientes, crearExpediente, abrirDetalle, cerrarDetalle } = useExpedientes()
+  const { expedientes, cargarExpedientes, crearExpediente, abrirDetalle } = useExpedientes()
   const { procesos, cargarProcesos } = useProcesos()
   const { disciplinas, cargarDisciplinas } = useDisciplinas()
 
@@ -17,7 +17,7 @@ const ExpedientesPanel = () => {
   const [etapasProceso, setEtapasProceso] = useState([])
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [filtroProceso, setFiltroProceso] = useState('')
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda] = useState('')
 
   // Es admin?
   const esAdmin = user?.rol_id === 1

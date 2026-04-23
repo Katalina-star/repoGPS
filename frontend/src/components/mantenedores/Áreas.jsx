@@ -5,8 +5,6 @@ const AreasPanel = () => {
   const {
     areas,
     contratistas,
-    loading,
-    error,
     cargarAreas,
     cargarContratistas,
     crearArea,
@@ -17,7 +15,7 @@ const AreasPanel = () => {
   const [formData, setFormData] = useState({ nombre: '', contratista_id: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda] = useState('')
 
   useEffect(() => {
     Promise.all([cargarAreas(), cargarContratistas()])

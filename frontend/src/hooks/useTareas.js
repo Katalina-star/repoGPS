@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { useApi } from './useApi'
 
 export const useTareas = () => {
-  const { get, patch, post } = useApi()
+  const { get, patch } = useApi()
   const [tareas, setTareas] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)

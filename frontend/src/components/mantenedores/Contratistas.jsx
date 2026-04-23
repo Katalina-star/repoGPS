@@ -4,8 +4,6 @@ import { useContratistas } from '../../hooks/useContratistas'
 const ContratistasPanel = () => {
   const {
     contratistas,
-    loading,
-    error,
     cargarContratistas,
     crearContratista,
     actualizarContratista,
@@ -15,7 +13,7 @@ const ContratistasPanel = () => {
   const [formData, setFormData] = useState({ razon_social: '', rut: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda] = useState('')
   const [errorRut, setErrorRut] = useState('')
 
   useEffect(() => {

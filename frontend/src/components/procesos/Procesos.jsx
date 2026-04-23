@@ -3,13 +3,13 @@ import { useProcesos } from '../../hooks/useProcesos'
 import { useAreas } from '../../hooks/useAreas'
 
 const ProcesosPanel = () => {
-  const { procesos, loading, cargarProcesos, crearProceso, actualizarProceso, cambiarEstado } = useProcesos()
+  const { procesos, cargarProcesos, crearProceso, actualizarProceso, cambiarEstado } = useProcesos()
   const { areas, cargarAreas } = useAreas()
 
   const [formData, setFormData] = useState({ area_id: '', nombre: '', descripcion: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda] = useState('')
 
   useEffect(() => {
     Promise.all([cargarProcesos(), cargarAreas()])
