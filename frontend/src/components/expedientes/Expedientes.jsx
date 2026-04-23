@@ -3,8 +3,10 @@ import { useExpedientes } from '../../hooks/useExpedientes'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useDisciplinas } from '../../hooks/useDisciplinas'
 import { useApi } from '../../hooks/useApi'
+import { useAuth } from '../../context/AuthContext'
 
 const ExpedientesPanel = () => {
+  const { user } = useAuth()
   const { get } = useApi()
   const { expedientes, loading, cargarExpedientes, crearExpediente, abrirDetalle, cerrarDetalle } = useExpedientes()
   const { procesos, cargarProcesos } = useProcesos()
@@ -16,6 +18,9 @@ const ExpedientesPanel = () => {
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [filtroProceso, setFiltroProceso] = useState('')
   const [busqueda, setBusqueda] = useState('')
+
+  // Es admin?
+  const esAdmin = user?.rol_id === 1
 
   useEffect(() => {
     Promise.all([cargarExpedientes(), cargarProcesos(), cargarDisciplinas()])
@@ -45,7 +50,12 @@ const ExpedientesPanel = () => {
   }
 
   const filtrarData = () => {
-    return expedientes
+    // Filtrar por área si no es admin
+    let filtered = esAdmin
+      ? expedientes
+      : expedientes.filter(e => e.area_id === user?.area_id)
+
+    return filtered
       .filter(e => {
         if (filtroEstado === 'en_proceso') {
           return !e.etapa_actual?.toLowerCase().includes('aprobad')
@@ -64,13 +74,14 @@ const ExpedientesPanel = () => {
 
   return (
     <>
-      <section className="panel">
-        <div className="panel-top">
-          <h3>Registrar Expediente</h3>
-          <button className="btn btn-primary" onClick={() => setMostrarForm(!mostrarForm)}>
-            {mostrarForm ? 'Cancelar' : '+ Nuevo Expediente'}
-          </button>
-        </div>
+      {esAdmin && (
+        <section className="panel">
+          <div className="panel-top">
+            <h3>Registrar Expediente</h3>
+            <button className="btn btn-primary" onClick={() => setMostrarForm(!mostrarForm)}>
+              {mostrarForm ? 'Cancelar' : '+ Nuevo Expediente'}
+            </button>
+          </div>
         
         {mostrarForm && (
           <form onSubmit={handleSubmit} className="form-grid">
@@ -117,6 +128,7 @@ const ExpedientesPanel = () => {
           </div>
         )}
       </section>
+      )}
 
       <section className="panel">
         <div className="panel-top table-top">
