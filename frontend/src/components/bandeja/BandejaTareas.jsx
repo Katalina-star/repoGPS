@@ -1,62 +1,257 @@
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useTareas } from '../../hooks/useTareas'
 
-const BandejaTareas = ({ user }) => {
-  const { user: authUser } = useAuth()
-  const usuario = user || authUser
+const BadgeTipo = ({ tipo }) => {
+  const estilos = {
+    revision: { bg: '#dbeafe', color: '#1d4ed8' },
+    aprobacion: { bg: '#dcfce7', color: '#166534' },
+    visacion: { bg: '#fef3c7', color: '#92400e' }
+  }
+  const estilo = estilos[tipo] || { bg: '#f1f5f9', color: '#475569' }
+
+  const labels = {
+    revision: 'Revision',
+    aprobacion: 'Aprobacion',
+    visacion: 'Visacion'
+  }
+
+  return (
+    <span style={{
+      background: estilo.bg,
+      color: estilo.color,
+      padding: '4px 10px',
+      borderRadius: '12px',
+      fontSize: '12px',
+      fontWeight: 500
+    }}>
+      {labels[tipo] || tipo}
+    </span>
+  )
+}
+
+const BandejaTareas = () => {
+  const { user } = useAuth()
+  const { tareas, loading, error, cargarTareas, marcarVisto, actualizarTarea } = useTareas()
+  const [observacion, setObservacion] = useState('')
+  const [tareaExpandida, setTareaExpandida] = useState(null)
+  const [mostrarFormObs, setMostrarFormObs] = useState(null)
+
+  useEffect(() => {
+    if (user?.id && user?.area_id && user?.rol_id) {
+      cargarTareas(user.id, user.area_id, user.rol_id)
+    }
+  }, [user, cargarTareas])
+
+  const handleVerDetalle = async (tarea) => {
+    setTareaExpandida(tarea.id)
+    setMostrarFormObs(null)
+    setObservacion('')
+    // Marcar como visto
+    await marcarVisto(tarea.id)
+  }
+
+  const handleAccion = async (tareaId, estado) => {
+    try {
+      await actualizarTarea(tareaId, estado, observacion || null)
+      setTareaExpandida(null)
+      setObservacion('')
+      setMostrarFormObs(null)
+    } catch (err) {
+      alert('Error al procesar tarea: ' + err.message)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="bandeja-tareas">
+        <h2 style={{ marginBottom: '24px', color: 'var(--text-main)' }}>
+          Bandeja de Tareas
+        </h2>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+          Cargando tareas...
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bandeja-tareas">
+        <h2 style={{ marginBottom: '24px', color: 'var(--text-main)' }}>
+          Bandeja de Tareas
+        </h2>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#ef4444' }}>
+          Error: {error}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bandeja-tareas">
       <h2 style={{ marginBottom: '24px', color: 'var(--text-main)' }}>
         Bandeja de Tareas
+        <span style={{
+          background: '#ef4444',
+          color: 'white',
+          padding: '4px 12px',
+          borderRadius: '12px',
+          fontSize: '14px',
+          marginLeft: '12px'
+        }}>
+          {tareas.length}
+        </span>
       </h2>
-      
-      <div style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border-color)',
-        borderRadius: '8px',
-        padding: '40px',
-        textAlign: 'center'
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-          </svg>
-        </div>
-        <h3 style={{ marginBottom: '12px', color: 'var(--text-main)' }}>
-          Vista en Desarrollo
-        </h3>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>
-          Aquí verás las tareas asignadas a tu rol de <strong>{usuario?.rol_nombre}</strong>
-        </p>
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-          Área: {usuario?.area_nombre || 'No asignada'}
-        </p>
-      </div>
 
-      <div style={{ marginTop: '24px' }}>
-        <h4 style={{ marginBottom: '16px', color: 'var(--text-main)' }}>
-          Próximas funcionalidades:
-        </h4>
-        <ul style={{
+      {tareas.length === 0 ? (
+        <div style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border-color)',
           borderRadius: '8px',
-          padding: '20px 40px'
+          padding: '40px',
+          textAlign: 'center'
         }}>
-          <li style={{ marginBottom: '8px', color: 'var(--text-secondary)' }}>
-            Ver expedientes que requieren tu atención
-          </li>
-          <li style={{ marginBottom: '8px', color: 'var(--text-secondary)' }}>
-            Acciones de Aprobar/Rechazar/Revisar
-          </li>
-          <li style={{ marginBottom: '8px', color: 'var(--text-secondary)' }}>
-            Notificaciones de nuevos asignación
-          </li>
-          <li style={{ color: 'var(--text-secondary)' }}>
-            Historial de tareas completadas
-          </li>
-        </ul>
-      </div>
+          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+          </div>
+          <h3 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>
+            No hay tareas pendientes
+          </h3>
+          <p style={{ color: 'var(--text-muted)' }}>
+            Las tareas que requieran tu atencion apareceran aqui
+          </p>
+        </div>
+      ) : (
+        <div className="tareas-lista">
+          {tareas.map(tarea => (
+            <div 
+              key={tarea.id} 
+              className={`tarea-card ${tareaExpandida === tarea.id ? 'expandida' : ''}`}
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                overflow: 'hidden',
+                transition: 'all 0.2s'
+              }}
+            >
+              <div 
+                style={{ padding: '16px 20px', cursor: 'pointer' }}
+                onClick={() => handleVerDetalle(tarea)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <BadgeTipo tipo={tarea.tipo_tarea} />
+                    <span style={{ 
+                      color: tarea.estado === 'visto' ? 'var(--text-secondary)' : 'var(--text-main)',
+                      fontWeight: tarea.estado === 'pendiente' ? 600 : 400
+                    }}>
+                      {tarea.estado === 'pendiente' ? 'Nueva' : 'Vista'}
+                    </span>
+                  </div>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                    {new Date(tarea.fecha_asignacion).toLocaleDateString('es-CL')}
+                  </span>
+                </div>
+                
+                <h4 style={{ 
+                  color: 'var(--text-main)', 
+                  marginBottom: '8px',
+                  fontSize: '15px'
+                }}>
+                  {tarea.expediente_titulo}
+                </h4>
+                
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '16px', 
+                  color: 'var(--text-secondary)', 
+                  fontSize: '13px' 
+                }}>
+                  <span>{tarea.proceso_nombre}</span>
+                  <span>Etapa: {tarea.etapa_nombre}</span>
+                </div>
+              </div>
+
+              {tareaExpandida === tarea.id && (
+                <div style={{
+                  padding: '16px 20px',
+                  borderTop: '1px solid var(--border-color)',
+                  background: '#f8fafc'
+                }}>
+                  {mostrarFormObs === tarea.id ? (
+                    <div>
+                      <textarea
+                        placeholder="Agregar observacion (opcional)"
+                        value={observacion}
+                        onChange={(e) => setObservacion(e.target.value)}
+                        style={{
+                          width: '100%',
+                          minHeight: '80px',
+                          padding: '10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)',
+                          marginBottom: '12px',
+                          fontSize: '14px',
+                          resize: 'vertical'
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                        <button 
+                          className="btn btn-secondary"
+                          onClick={() => setMostrarFormObs(null)}
+                        >
+                          Cancelar
+                        </button>
+                        <button 
+                          className="btn btn-danger"
+                          onClick={() => handleAccion(tarea.id, 'rechazada')}
+                          style={{ background: '#ef4444', color: 'white' }}
+                        >
+                          Rechazar
+                        </button>
+                        <button 
+                          className="btn btn-primary"
+                          onClick={() => handleAccion(tarea.id, 'completada')}
+                          style={{ background: '#22c55e' }}
+                        >
+                          Aprobar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => setTareaExpandida(null)}
+                      >
+                        Cerrar
+                      </button>
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => setMostrarFormObs(tarea.id)}
+                      >
+                        Rechazar
+                      </button>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={() => handleAccion(tarea.id, 'completada')}
+                        style={{ background: '#22c55e' }}
+                      >
+                        Aprobar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -146,11 +146,11 @@ app.get("/api/etapas-proceso/:id", async (req, res) => {
 });
 
 app.post("/api/etapas-proceso", async (req, res) => {
-  const { proceso_id, nombre, orden, es_final, requiere_aprobador, usuario_asignado_id } = req.body;
+  const { proceso_id, nombre, orden, es_final, tipo_tarea, rol_id } = req.body;
   try {
     const result = await pool.query(
-      "INSERT INTO etapas_proceso (proceso_id, nombre, orden, es_final, requiere_aprobador, usuario_asignado_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [proceso_id, nombre, orden, es_final || false, requiere_aprobador || false, usuario_asignado_id || null]
+      "INSERT INTO etapas_proceso (proceso_id, nombre, orden, es_final, tipo_tarea, rol_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [proceso_id, nombre, orden, es_final || false, tipo_tarea || null, rol_id || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -160,11 +160,11 @@ app.post("/api/etapas-proceso", async (req, res) => {
 
 app.put("/api/etapas-proceso/:id", async (req, res) => {
   const { id } = req.params;
-  const { proceso_id, nombre, orden, es_final, requiere_aprobador, usuario_asignado_id } = req.body;
+  const { proceso_id, nombre, orden, es_final, tipo_tarea, rol_id } = req.body;
   try {
     const result = await pool.query(
-      "UPDATE etapas_proceso SET proceso_id = $1, nombre = $2, orden = $3, es_final = $4, requiere_aprobador = $5, usuario_asignado_id = $6 WHERE id = $7 RETURNING *",
-      [proceso_id, nombre, orden, es_final, requiere_aprobador, usuario_asignado_id, id]
+      "UPDATE etapas_proceso SET proceso_id = $1, nombre = $2, orden = $3, es_final = $4, tipo_tarea = $5, rol_id = $6 WHERE id = $7 RETURNING *",
+      [proceso_id, nombre, orden, es_final, tipo_tarea, rol_id, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Etapa no encontrada" });
@@ -260,6 +260,7 @@ app.put("/api/expedientes/:id", async (req, res) => {
 });
 
 // Avanzar expediente a siguiente etapa
+// Al avanzar, genera tareas automaticamente para usuarios con el rol correspondiente
 app.post("/api/expedientes/:id/avanzar", async (req, res) => {
   const { id } = req.params;
   const { usuario_id, observacion } = req.body;
@@ -278,7 +279,7 @@ app.post("/api/expedientes/:id/avanzar", async (req, res) => {
     );
 
     if (etapaResult.rows.length === 0) {
-      return res.status(400).json({ error: "No hay más etapas para avanzar" });
+      return res.status(400).json({ error: "No hay mas etapas para avanzar" });
     }
 
     const nuevaEtapa = etapaResult.rows[0];
@@ -292,8 +293,13 @@ app.post("/api/expedientes/:id/avanzar", async (req, res) => {
     // Registrar en historial
     await pool.query(
       "INSERT INTO historial_etapas (expediente_id, etapa_anterior_id, etapa_nueva_id, usuario_id, observacion) VALUES ($1, $2, $3, $4, $5)",
-      [id, expediente.etapa_actual_id, nuevaEtapa.id, usuario_id, observacion || "Avance automático"]
+      [id, expediente.etapa_actual_id, nuevaEtapa.id, usuario_id, observacion || "Avance automatico"]
     );
+
+    // Generar tareas automaticamente para la nueva etapa
+    if (nuevaEtapa.tipo_tarea && nuevaEtapa.rol_id) {
+      await generarTareasPorEtapa(id, nuevaEtapa.id, pool);
+    }
 
     res.json({ message: "Expediente avanzado", nueva_etapa: nuevaEtapa });
   } catch (err) {
@@ -431,54 +437,92 @@ app.get("/api/historial/expediente/:expedienteId", async (req, res) => {
 // TAREAS ASIGNADAS
 // ============================================
 
-app.get("/api/tareas", async (req, res) => {
+// Obtener tareas de un usuario filtradas por area y rol
+// GET /api/tareas/mis-tareas?usuario_id=X&area_id=Y&rol_id=Z
+app.get("/api/tareas/mis-tareas", async (req, res) => {
+  const { usuario_id, area_id, rol_id } = req.query;
+
+  if (!usuario_id) {
+    return res.status(400).json({ error: "usuario_id es requerido" });
+  }
+
   try {
+    // Buscar tareas pendientes del usuario
+    // Join con expediente -> proceso -> area para filtrar por area
     const result = await pool.query(`
-      SELECT t.*, e.titulo AS expediente_titulo, u.nombre AS usuario_nombre
+      SELECT DISTINCT ON (t.id)
+        t.*,
+        e.titulo AS expediente_titulo,
+        e.fecha_creacion AS expediente_fecha,
+        p.nombre AS proceso_nombre,
+        p.area_id,
+        ep.nombre AS etapa_nombre,
+        ep.tipo_tarea
       FROM tareas_asignadas t
-      LEFT JOIN expedientes e ON t.expediente_id = e.id
-      LEFT JOIN usuarios u ON t.usuario_id = u.id
-      ORDER BY t.fecha_asignacion DESC
-    `);
+      INNER JOIN expedientes e ON t.expediente_id = e.id
+      INNER JOIN procesos p ON e.proceso_id = p.id
+      INNER JOIN etapas_proceso ep ON t.etapa_id = ep.id
+      WHERE t.usuario_id = $1
+        AND t.estado IN ('pendiente', 'visto')
+        AND e.estado_activo = true
+        ${area_id ? 'AND p.area_id = $2' : ''}
+        ${rol_id ? 'AND ep.rol_id = $3' : ''}
+      ORDER BY t.id, t.fecha_asignacion ASC
+    `, area_id && rol_id ? [usuario_id, area_id, rol_id] : [usuario_id]);
+
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/tareas/usuario/:usuarioId", async (req, res) => {
-  const { usuarioId } = req.params;
+// Obtener tareas por rol y area (para bandeja)
+app.get("/api/tareas/bandeja", async (req, res) => {
+  const { area_id, rol_id } = req.query;
+
+  if (!area_id || !rol_id) {
+    return res.status(400).json({ error: "area_id y rol_id son requeridos" });
+  }
+
   try {
-    const result = await pool.query(
-      "SELECT * FROM tareas_asignadas WHERE usuario_id = $1 AND estado = 'pendiente' ORDER BY fecha_asignacion ASC",
-      [usuarioId]
-    );
+    // Buscar todos los usuarios del area con ese rol
+    // Luego obtener sus tareas pendientes
+    const result = await pool.query(`
+      SELECT DISTINCT ON (t.id)
+        t.*,
+        e.titulo AS expediente_titulo,
+        e.fecha_creacion AS expediente_fecha,
+        p.nombre AS proceso_nombre,
+        p.area_id,
+        ep.nombre AS etapa_nombre,
+        ep.tipo_tarea,
+        u.nombre_completo AS usuario_nombre,
+        u.correo AS usuario_correo
+      FROM tareas_asignadas t
+      INNER JOIN expedientes e ON t.expediente_id = e.id
+      INNER JOIN procesos p ON e.proceso_id = p.id
+      INNER JOIN etapas_proceso ep ON t.etapa_id = ep.id
+      INNER JOIN db_usuarios.usuarios u ON t.usuario_id = u.id
+      WHERE p.area_id = $1
+        AND ep.rol_id = $2
+        AND t.estado IN ('pendiente', 'visto')
+        AND e.estado_activo = true
+      ORDER BY t.id, t.fecha_asignacion ASC
+    `, [area_id, rol_id]);
+
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/tareas", async (req, res) => {
-  const { expediente_id, usuario_id, tipo_tarea, observacion } = req.body;
-  try {
-    const result = await pool.query(
-      "INSERT INTO tareas_asignadas (expediente_id, usuario_id, tipo_tarea, observacion) VALUES ($1, $2, $3, $4) RETURNING *",
-      [expediente_id, usuario_id, tipo_tarea, observacion]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.put("/api/tareas/:id", async (req, res) => {
+// Marcar tarea como vista
+app.patch("/api/tareas/:id/visto", async (req, res) => {
   const { id } = req.params;
-  const { estado, observacion } = req.body;
   try {
     const result = await pool.query(
-      "UPDATE tareas_asignadas SET estado = $1, fecha_termino = CASE WHEN $1 = 'completada' THEN CURRENT_TIMESTAMP ELSE fecha_termino END, observacion = COALESCE($2, observacion) WHERE id = $3 RETURNING *",
-      [estado, observacion, id]
+      "UPDATE tareas_asignadas SET estado = 'visto', fecha_visto = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *",
+      [id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Tarea no encontrada" });
@@ -488,6 +532,95 @@ app.put("/api/tareas/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Actualizar estado de tarea (completada/rechazada)
+app.patch("/api/tareas/:id", async (req, res) => {
+  const { id } = req.params;
+  const { estado, observacion } = req.body;
+  try {
+    const result = await pool.query(`
+      UPDATE tareas_asignadas 
+      SET estado = $1, 
+          fecha_termino = CASE WHEN $1 IN ('completada', 'rechazada') THEN CURRENT_TIMESTAMP ELSE fecha_termino END,
+          observacion = COALESCE($2, observacion)
+      WHERE id = $3 
+      RETURNING *
+    `, [estado, observacion, id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Tarea no encontrada" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generar tareas automaticamente al cambiar de etapa
+// Busca usuarios por rol+area y crea tareas_asignadas
+async function generarTareasPorEtapa(expedienteId, etapaId, pool) {
+  // Obtener la etapa para saber que rol requiere
+  const etapaResult = await pool.query(
+    "SELECT * FROM etapas_proceso WHERE id = $1",
+    [etapaId]
+  );
+
+  if (etapaResult.rows.length === 0) return;
+
+  const etapa = etapaResult.rows[0];
+
+  // Si la etapa no tiene tipo_tarea ni rol_id, no generar tareas
+  if (!etapa.tipo_tarea || !etapa.rol_id) return;
+
+  // Obtener info del expediente para saber el area
+  const expResult = await pool.query(`
+    SELECT e.*, p.area_id 
+    FROM expedientes e 
+    INNER JOIN procesos p ON e.proceso_id = p.id 
+    WHERE e.id = $1
+  `, [expedienteId]);
+
+  if (expResult.rows.length === 0) return;
+
+  const { area_id } = expResult.rows[0];
+
+  // Buscar usuarios de esa area con ese rol
+  // Conectar a db_usuarios para buscar
+  const usuariosDb = new (require('pg').Pool)({
+    user: process.env.DB_USER || "postgres",
+    host: process.env.DB_HOST || "db",
+    database: process.env.DB_NAME_USUARIOS || "db_usuarios",
+    password: process.env.DB_PASSWORD || "password123",
+    port: process.env.DB_PORT || 5432,
+  });
+
+  try {
+    // Buscar usuarios del area con el rol especificado
+    const usuariosResult = await usuariosDb.query(`
+      SELECT u.id 
+      FROM db_usuarios.usuarios u
+      INNER JOIN db_usuarios.usuario_area ua ON u.id = ua.usuario_id
+      WHERE ua.area_id = $1 AND u.rol_id = $2 AND u.estado_activo = true
+    `, [area_id, etapa.rol_id]);
+
+    // Crear tarea para cada usuario
+    for (const usuario of usuariosResult.rows) {
+      // Verificar si ya existe una tarea similar
+      const existe = await pool.query(`
+        SELECT id FROM tareas_asignadas 
+        WHERE expediente_id = $1 AND etapa_id = $2 AND usuario_id = $3
+      `, [expedienteId, etapaId, usuario.id]);
+
+      if (existe.rows.length === 0) {
+        await pool.query(`
+          INSERT INTO tareas_asignadas (expediente_id, etapa_id, usuario_id, tipo_tarea, estado)
+          VALUES ($1, $2, $3, $4, 'pendiente')
+        `, [expedienteId, etapaId, usuario.id, etapa.tipo_tarea]);
+      }
+    }
+  } finally {
+    await usuariosDb.end();
+  }
+}
 
 // ============================================
 // CATEGORÍAS Y SUBTIPOS (Desde db_mantenedores - API Composition)
