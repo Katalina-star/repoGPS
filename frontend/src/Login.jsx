@@ -95,18 +95,18 @@ function Login() {
           </div>
 
           <div className="login-copy">
-            <span className="login-tag">Sistema de Gestión</span>
+            <span className="login-tag">Sistema de Gestion</span>
             <h2>Bienvenida de vuelta</h2>
             <p>
-              Ingresa con tu correo y contraseña para acceder al panel
+              Ingresa con tu correo y contrasena para acceder al panel
               administrativo.
             </p>
           </div>
         </div>
 
-<div className="login-right">
+        <div className="login-right">
           <form className="login-card" onSubmit={handleSubmit}>
-            <h3>Iniciar sesión</h3>
+            <h3>Iniciar sesion</h3>
             <p className="login-subtitle">Accede a tu cuenta</p>
 
             {MODO_DESARROLLO && (
@@ -143,7 +143,7 @@ function Login() {
               </div>
             )}
 
-            <label>Correo electrónico</label>
+            <label>Correo electronico</label>
             <input
               type="email"
               placeholder="ejemplo@correo.com"
@@ -152,10 +152,10 @@ function Login() {
               required
             />
 
-            <label>Contraseña</label>
+            <label>Contrasena</label>
             <input
               type="password"
-              placeholder="•••••��••"
+              placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -165,72 +165,6 @@ function Login() {
 
             <button type="submit">Entrar</button>
           </form>
-        </div>
-              <h3>Vista en Desarrollo</h3>
-              <p style={{ color: "#7f8c8d", marginBottom: "20px" }}>
-                Tu rol de <strong>{vistaNoImplementada.rol}</strong> aún no tiene
-                acceso a la plataforma.
-              </p>
-              <p style={{ 
-                background: "#fff3cd", 
-                padding: "12px", 
-                borderRadius: "8px",
-                fontSize: "14px",
-                color: "#856404"
-              }}>
-                {vistaNoImplementada.mensaje}
-              </p>
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                style={{ marginTop: "20px" }}
-                onClick={() => setVistaNoImplementada(null)}
-              >
-                Intentar con otro usuario
-              </button>
-            </div>
-          ) : (
-            <form className="login-card" onSubmit={handleSubmit}>
-              <h3>Iniciar sesión</h3>
-              <p className="login-subtitle">Accede a tu cuenta</p>
-
-              {MODO_DESARROLLO && (
-                <div style={{
-                  background: '#fff3cd',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  marginBottom: '16px',
-                  fontSize: '12px',
-                  color: '#856404',
-                  border: '1px solid #ffc107'
-                }}>
-                  ⚠️ Modo desarrollo activo - clic en "Entrar" para login directo
-                </div>
-              )}
-
-              <label>Correo electrónico</label>
-              <input
-                type="email"
-                placeholder="ejemplo@correo.com"
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                required
-              />
-
-              <label>Contraseña</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-
-              {error && <p className="login-error">{error}</p>}
-
-              <button type="submit">Entrar</button>
-            </form>
-          )}
         </div>
       </div>
     </div>
