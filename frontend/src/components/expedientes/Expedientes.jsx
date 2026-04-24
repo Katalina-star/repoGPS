@@ -60,26 +60,37 @@ const ExpedientesPanel = () => {
     }
   }, [get])
 
-  // Cargar disciplinas y procesos cuando se selecciona un área
-  const cargarDisciplinasYProcesosPorArea = useCallback(async (areaId) => {
+  // Cargar disciplinas cuando se selecciona un área
+  const cargarDisciplinasPorArea = useCallback(async (areaId) => {
     if (!areaId) {
       setDisciplinasFiltradas([])
-      setProcesosFiltrados([])
       setFormData(prev => ({ ...prev, disciplina_id: '', proceso_id: '' }))
       return
     }
     try {
-      const dataDisc = await get(`/api/disciplinas/area/${areaId}`)
-      if (Array.isArray(dataDisc)) {
-        setDisciplinasFiltradas(dataDisc)
-      }
-      const dataProc = await get(`/api/procesos/area/${areaId}`)
-      if (Array.isArray(dataProc)) {
-        setProcesosFiltrados(dataProc)
+      const data = await get(`/api/disciplinas/area/${areaId}`)
+      if (Array.isArray(data)) {
+        setDisciplinasFiltradas(data)
       }
     } catch (err) {
-      console.error('Error al cargar disciplinas/procesos:', err)
+      console.error('Error al cargar disciplinas:', err)
       setDisciplinasFiltradas([])
+    }
+  }, [get])
+
+  // Cargar procesos cuando se selecciona un área
+  const cargarProcesosPorArea = useCallback(async (areaId) => {
+    if (!areaId) {
+      setProcesosFiltrados([])
+      return
+    }
+    try {
+      const data = await get(`/api/procesos/area/${areaId}`)
+      if (Array.isArray(data)) {
+        setProcesosFiltrados(data)
+      }
+    } catch (err) {
+      console.error('Error al cargar procesos:', err)
       setProcesosFiltrados([])
     }
   }, [get])
@@ -120,7 +131,8 @@ const ExpedientesPanel = () => {
     setProcesosFiltrados([])
     setEtapasProceso([])
     if (areaId) {
-      await cargarDisciplinasYProcesosPorArea(areaId)
+      await cargarDisciplinasPorArea(areaId)
+      await cargarProcesosPorArea(areaId)
     }
   }
 
