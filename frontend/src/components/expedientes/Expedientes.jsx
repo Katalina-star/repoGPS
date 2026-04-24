@@ -31,6 +31,7 @@ const ExpedientesPanel = () => {
   // Listas filtradas para selects en cascada
   const [areasFiltradas, setAreasFiltradas] = useState([])
   const [disciplinasFiltradas, setDisciplinasFiltradas] = useState([])
+  const [procesosFiltrados, setProcesosFiltrados] = useState([])
 
   // Es admin?
   const esAdmin = user?.rol_id === 1
@@ -63,17 +64,25 @@ const ExpedientesPanel = () => {
   const cargarDisciplinasPorArea = useCallback(async (areaId) => {
     if (!areaId) {
       setDisciplinasFiltradas([])
+      setProcesosFiltrados([])
       setFormData(prev => ({ ...prev, disciplina_id: '', proceso_id: '' }))
       return
     }
     try {
-      const data = await get(`/api/disciplinas/area/${areaId}`)
-      if (Array.isArray(data)) {
-        setDisciplinasFiltradas(data)
+      // Cargar disciplinas del área
+      const dataDisc = await get(`/api/disciplinas/area/${areaId}`)
+      if (Array.isArray(dataDisc)) {
+        setDisciplinasFiltradas(dataDisc)
+      }
+      // Cargar procesos del área
+      const dataProc = await get(`/api/procesos/area/${areaId}`)
+      if (Array.isArray(dataProc)) {
+        setProcesosFiltrados(dataProc)
       }
     } catch (err) {
-      console.error('Error al cargar disciplinas:', err)
+      console.error('Error al cargar disciplinas/procesos:', err)
       setDisciplinasFiltradas([])
+      setProcesosFiltrados([])
     }
   }, [get])
 
@@ -99,6 +108,7 @@ const ExpedientesPanel = () => {
     setFormData(prev => ({ ...prev, contratista_id: contratistaId, area_id: '', disciplina_id: '', proceso_id: '' }))
     setAreasFiltradas([])
     setDisciplinasFiltradas([])
+    setProcesosFiltrados([])
     setEtapasProceso([])
     if (contratistaId) {
       await cargarAreasPorContratista(contratistaId)
@@ -109,6 +119,7 @@ const ExpedientesPanel = () => {
     const areaId = e.target.value
     setFormData(prev => ({ ...prev, area_id: areaId, disciplina_id: '', proceso_id: '' }))
     setDisciplinasFiltradas([])
+    setProcesosFiltrados([])
     setEtapasProceso([])
     if (areaId) {
       await cargarDisciplinasPorArea(areaId)
@@ -220,9 +231,9 @@ const ExpedientesPanel = () => {
                     } else {
                       setEtapasProceso([])
                     }
-                  }} required>
+                  }} required disabled={!formData.area_id}>
                     <option value="">Seleccione...</option>
-                    {procesos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    {procesosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                   </select>
                 </div>
 
