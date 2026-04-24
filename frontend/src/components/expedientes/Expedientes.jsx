@@ -60,8 +60,8 @@ const ExpedientesPanel = () => {
     }
   }, [get])
 
-  // Cargar disciplinas cuando se selecciona un área
-  const cargarDisciplinasPorArea = useCallback(async (areaId) => {
+  // Cargar disciplinas y procesos cuando se selecciona un área
+  const cargarDisciplinasYProcesosPorArea = useCallback(async (areaId) => {
     if (!areaId) {
       setDisciplinasFiltradas([])
       setProcesosFiltrados([])
@@ -69,12 +69,10 @@ const ExpedientesPanel = () => {
       return
     }
     try {
-      // Cargar disciplinas del área
       const dataDisc = await get(`/api/disciplinas/area/${areaId}`)
       if (Array.isArray(dataDisc)) {
         setDisciplinasFiltradas(dataDisc)
       }
-      // Cargar procesos del área
       const dataProc = await get(`/api/procesos/area/${areaId}`)
       if (Array.isArray(dataProc)) {
         setProcesosFiltrados(dataProc)
@@ -122,7 +120,7 @@ const ExpedientesPanel = () => {
     setProcesosFiltrados([])
     setEtapasProceso([])
     if (areaId) {
-      await cargarDisciplinasPorArea(areaId)
+      await cargarDisciplinasYProcesosPorArea(areaId)
     }
   }
 
@@ -138,6 +136,7 @@ const ExpedientesPanel = () => {
       setFormData({ contratista_id: '', area_id: '', proceso_id: '', disciplina_id: '', titulo: '', descripcion: '' })
       setAreasFiltradas([])
       setDisciplinasFiltradas([])
+      setProcesosFiltrados([])
       setEtapasProceso([])
       cargarExpedientes()
     } catch (err) {
