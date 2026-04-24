@@ -85,9 +85,11 @@ const ExpedientesPanel = () => {
       return
     }
     try {
-      const data = await get(`/api/procesos-por-area/${areaId}`)
+      // Cargar todos los procesos y filtrar en el frontend
+      const data = await get(`/api/procesos`)
       if (Array.isArray(data)) {
-        setProcesosFiltrados(data)
+        const filtrados = data.filter(p => p.area_id === Number(areaId))
+        setProcesosFiltrados(filtrados)
       }
     } catch (err) {
       console.error('Error al cargar procesos:', err)
