@@ -25,13 +25,27 @@ app.get("/api/procesos", async (req, res) => {
     let query = "SELECT * FROM procesos WHERE estado_activo = true";
     let params = [];
     
-    if (area_id) {
+    if (area_id && area_id !== undefined && area_id !== '') {
       query += " AND area_id = $1";
-      params.push(Number(area_id)); // Convertir a número
+      params.push(Number(area_id));
     }
     
     query += " ORDER BY id ASC";
     const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint específico para procesos por área (evita query string)
+app.get("/api/procesos-por-area/:areaId", async (req, res) => {
+  const { areaId } = req.params;
+  try {
+    const result = await pool.query(
+      "SELECT * FROM procesos WHERE area_id = $1 AND estado_activo = true ORDER BY id ASC",
+      [Number(areaId)]
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

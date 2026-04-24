@@ -85,7 +85,7 @@ const ExpedientesPanel = () => {
       return
     }
     try {
-      const data = await get(`/api/procesos?area_id=${areaId}`)
+      const data = await get(`/api/procesos-por-area/${areaId}`)
       if (Array.isArray(data)) {
         setProcesosFiltrados(data)
       }
