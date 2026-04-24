@@ -27,7 +27,7 @@ app.get("/api/procesos", async (req, res) => {
     
     if (area_id) {
       query += " AND area_id = $1";
-      params.push(area_id);
+      params.push(Number(area_id)); // Convertir a número
     }
     
     query += " ORDER BY id ASC";
