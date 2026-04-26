@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    localStorage.setItem('logout_message', 'Sesión cerrada correctamente')
     setUser(null)
   }
 

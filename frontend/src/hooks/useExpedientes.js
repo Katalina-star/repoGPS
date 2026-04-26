@@ -9,6 +9,7 @@ export const useExpedientes = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { get, post, put, patch } = useApi()
+  const user = JSON.parse(localStorage.getItem('user') || 'null')
 
   const cargarExpedientes = useCallback(async () => {
     setLoading(true)
@@ -56,20 +57,28 @@ export const useExpedientes = () => {
   }, [])
 
   const avanzarExpediente = useCallback(async (id, observacion) => {
-    const data = await post(`/api/expedientes/${id}/avanzar`, { observacion })
+    const data = await post(`/api/expedientes/${id}/avanzar`, {
+      observacion,
+      usuario_id: user?.id,
+      rol_id: user?.rol_id
+    })
     if (data) {
       await cargarExpedientes()
     }
     return data
-  }, [post, cargarExpedientes])
+  }, [post, cargarExpedientes, user?.id, user?.rol_id])
 
   const devolverExpediente = useCallback(async (id, observacion) => {
-    const data = await post(`/api/expedientes/${id}/devolver`, { observacion })
+    const data = await post(`/api/expedientes/${id}/devolver`, {
+      observacion,
+      usuario_id: user?.id,
+      rol_id: user?.rol_id
+    })
     if (data) {
       await cargarExpedientes()
     }
     return data
-  }, [post, cargarExpedientes])
+  }, [post, cargarExpedientes, user?.id, user?.rol_id])
 
   return {
     expedientes,
