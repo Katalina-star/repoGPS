@@ -34,7 +34,8 @@ export const useApi = () => {
       try {
         return JSON.parse(text)
       } catch (e) {
-        // invalid JSON
+        // invalid JSON - keep diagnostic in logs for debugging
+        console.error('Invalid JSON response from API', e)
         throw new Error(`Invalid JSON response from API: ${text.slice(0, 200)}`)
       }
     }
