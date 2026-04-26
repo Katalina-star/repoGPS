@@ -94,6 +94,8 @@ services:
   ms-expedientes:
     image: ghcr.io/katalina-star/repogps/repogps-ms-expedientes:latest
     container_name: ms-expedientes
+    expose:
+      - "3002"
     environment:
       - DB_USER=postgres
       - DB_HOST=db_expedientes
