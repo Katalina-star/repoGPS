@@ -145,7 +145,13 @@ function App({ onLogout }) {
           contratista_id: Number(formArea.contratista_id)
         })
       })
-      if (response.ok) { limpiarFormularios(); cargarAreas(); }
+      if (response.ok) {
+        limpiarFormularios();
+        await Promise.all([cargarAreas(), cargarContratistas()]);
+      } else {
+        const data = await response.json().catch(() => ({}))
+        alert(data.error || 'Error al guardar área')
+      }
     } catch { alert('Error al guardar área') }
   }
 
@@ -162,7 +168,13 @@ function App({ onLogout }) {
           area_id: Number(formDisciplina.area_id)
         })
       })
-      if (response.ok) { limpiarFormularios(); cargarDisciplinas(); }
+      if (response.ok) {
+        limpiarFormularios();
+        await Promise.all([cargarDisciplinas(), cargarAreas(), cargarContratistas()]);
+      } else {
+        const data = await response.json().catch(() => ({}))
+        alert(data.error || 'Error al guardar disciplina')
+      }
     } catch { alert('Error al guardar disciplina') }
   }
 

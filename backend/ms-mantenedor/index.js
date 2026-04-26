@@ -16,6 +16,26 @@ const pool = new Pool({
 });
 
 // ============================================
+// HELPERS VALIDACIÓN
+// ============================================
+
+async function validarContratistaActivo(contratistaId) {
+  const result = await pool.query(
+    "SELECT id FROM contratistas WHERE id = $1 AND estado_activo = true",
+    [contratistaId]
+  );
+  return result.rows.length > 0;
+}
+
+async function validarAreaActiva(areaId) {
+  const result = await pool.query(
+    "SELECT id FROM areas WHERE id = $1 AND estado_activo = true",
+    [areaId]
+  );
+  return result.rows.length > 0;
+}
+
+// ============================================
 // CONTRATISTAS
 // ============================================
 
@@ -77,6 +97,15 @@ app.put("/api/contratistas/:id", async (req, res) => {
   const { id } = req.params;
   const { razon_social, rut } = req.body;
   try {
+    // Validar RUT único excluyendo el registro actual
+    const existeRut = await pool.query(
+      "SELECT id FROM contratistas WHERE rut = $1 AND id <> $2",
+      [rut, id]
+    );
+    if (existeRut.rows.length > 0) {
+      return res.status(400).json({ error: "Ya existe un contratista registrado con este RUT" });
+    }
+
     const result = await pool.query(
       "UPDATE contratistas SET razon_social = $1, rut = $2 WHERE id = $3 RETURNING *",
       [razon_social, rut, id]
@@ -152,6 +181,15 @@ app.get("/api/areas/:id", async (req, res) => {
 app.post("/api/areas", async (req, res) => {
   const { contratista_id, nombre } = req.body;
   try {
+    if (!contratista_id) {
+      return res.status(400).json({ error: "contratista_id es obligatorio" });
+    }
+
+    const contratistaActivo = await validarContratistaActivo(contratista_id);
+    if (!contratistaActivo) {
+      return res.status(400).json({ error: "El contratista no existe o está inactivo" });
+    }
+
     const result = await pool.query(
       "INSERT INTO areas (contratista_id, nombre) VALUES ($1, $2) RETURNING *",
       [contratista_id, nombre]
@@ -166,6 +204,15 @@ app.put("/api/areas/:id", async (req, res) => {
   const { id } = req.params;
   const { contratista_id, nombre } = req.body;
   try {
+    if (!contratista_id) {
+      return res.status(400).json({ error: "contratista_id es obligatorio" });
+    }
+
+    const contratistaActivo = await validarContratistaActivo(contratista_id);
+    if (!contratistaActivo) {
+      return res.status(400).json({ error: "El contratista no existe o está inactivo" });
+    }
+
     const result = await pool.query(
       "UPDATE areas SET contratista_id = $1, nombre = $2 WHERE id = $3 RETURNING *",
       [contratista_id, nombre, id]
@@ -242,6 +289,15 @@ app.get("/api/disciplinas", async (req, res) => {
   app.post("/api/disciplinas", async (req, res) => {
     const { area_id, nombre } = req.body;
     try {
+      if (!area_id) {
+        return res.status(400).json({ error: "area_id es obligatorio" });
+      }
+
+      const areaActiva = await validarAreaActiva(area_id);
+      if (!areaActiva) {
+        return res.status(400).json({ error: "El área no existe o está inactiva" });
+      }
+
       const result = await pool.query(
         "INSERT INTO disciplinas (area_id, nombre) VALUES ($1, $2) RETURNING *",
         [area_id, nombre]
@@ -256,6 +312,15 @@ app.get("/api/disciplinas", async (req, res) => {
     const { id } = req.params;
     const { area_id, nombre } = req.body;
     try {
+      if (!area_id) {
+        return res.status(400).json({ error: "area_id es obligatorio" });
+      }
+
+      const areaActiva = await validarAreaActiva(area_id);
+      if (!areaActiva) {
+        return res.status(400).json({ error: "El área no existe o está inactiva" });
+      }
+
       const result = await pool.query(
         "UPDATE disciplinas SET area_id = $1, nombre = $2 WHERE id = $3 RETURNING *",
         [area_id, nombre, id]
