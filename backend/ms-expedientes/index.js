@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // Compatibilidad de esquema: algunas BD antiguas usan etapa_proceso_id
-let TAREAS_ETAPA_COLUMN = "etapa_id";
+let TAREAS_ETAPA_COLUMN = null;
 
 async function resolveTareasEtapaColumn() {
   try {
@@ -31,11 +31,25 @@ async function resolveTareasEtapaColumn() {
       TAREAS_ETAPA_COLUMN = result.rows[0].column_name;
       console.log(`[ms-expedientes] Usando columna de etapa en tareas_asignadas: ${TAREAS_ETAPA_COLUMN}`);
     } else {
+      TAREAS_ETAPA_COLUMN = "etapa_id";
       console.warn("[ms-expedientes] No se encontró columna etapa_id ni etapa_proceso_id en tareas_asignadas. Se usará etapa_id por defecto.");
     }
   } catch (err) {
-    console.warn(`[ms-expedientes] No se pudo resolver columna de etapa: ${err.message}. Se usará etapa_id por defecto.`);
+    // Puede fallar al iniciar si DB todavía no está lista. Reintentar en runtime.
+    console.warn(`[ms-expedientes] No se pudo resolver columna de etapa al iniciar: ${err.message}. Se reintentará en runtime.`);
   }
+}
+
+async function getTareasEtapaColumn() {
+  if (!TAREAS_ETAPA_COLUMN) {
+    await resolveTareasEtapaColumn();
+  }
+  return TAREAS_ETAPA_COLUMN || "etapa_id";
+}
+
+function isMissingColumnError(err, colName) {
+  const msg = (err && err.message) || "";
+  return msg.includes(`column t.${colName} does not exist`) || msg.includes(`column ${colName} does not exist`);
 }
 
 // Conexión a db_expedientes
@@ -493,9 +507,8 @@ app.get("/api/tareas/mis-tareas", async (req, res) => {
   }
 
   try {
-    // Buscar tareas pendientes del usuario
-    // Join con expediente -> proceso -> area para filtrar por area
-    const result = await pool.query(`
+    let etapaColumn = await getTareasEtapaColumn();
+    const buildQuery = () => `
       SELECT DISTINCT ON (t.id)
         t.*,
         e.titulo AS expediente_titulo,
@@ -507,14 +520,34 @@ app.get("/api/tareas/mis-tareas", async (req, res) => {
       FROM tareas_asignadas t
       INNER JOIN expedientes e ON t.expediente_id = e.id
       INNER JOIN procesos p ON e.proceso_id = p.id
-      INNER JOIN etapas_proceso ep ON t.${TAREAS_ETAPA_COLUMN} = ep.id
+      INNER JOIN etapas_proceso ep ON t.${etapaColumn} = ep.id
       WHERE t.usuario_id = $1
         AND t.estado IN ('pendiente', 'visto')
         AND e.estado_activo = true
         ${area_id ? 'AND p.area_id = $2' : ''}
         ${rol_id ? 'AND ep.rol_id = $3' : ''}
       ORDER BY t.id, t.fecha_asignacion ASC
-    `, area_id && rol_id ? [usuario_id, area_id, rol_id] : [usuario_id]);
+    `;
+
+    const params = area_id && rol_id ? [usuario_id, area_id, rol_id] : [usuario_id];
+
+    let result;
+    try {
+      result = await pool.query(buildQuery(), params);
+    } catch (err) {
+      // fallback en caliente por drift de esquema en prod
+      if (etapaColumn === "etapa_id" && isMissingColumnError(err, "etapa_id")) {
+        etapaColumn = "etapa_proceso_id";
+        TAREAS_ETAPA_COLUMN = etapaColumn;
+        result = await pool.query(buildQuery(), params);
+      } else if (etapaColumn === "etapa_proceso_id" && isMissingColumnError(err, "etapa_proceso_id")) {
+        etapaColumn = "etapa_id";
+        TAREAS_ETAPA_COLUMN = etapaColumn;
+        result = await pool.query(buildQuery(), params);
+      } else {
+        throw err;
+      }
+    }
 
     res.json(result.rows);
   } catch (err) {
@@ -531,9 +564,8 @@ app.get("/api/tareas/bandeja", async (req, res) => {
   }
 
   try {
-    // Buscar todos los usuarios del area con ese rol
-    // Luego obtener sus tareas pendientes
-    const result = await pool.query(`
+    let etapaColumn = await getTareasEtapaColumn();
+    const buildQuery = () => `
       SELECT DISTINCT ON (t.id)
         t.*,
         e.titulo AS expediente_titulo,
@@ -547,14 +579,31 @@ app.get("/api/tareas/bandeja", async (req, res) => {
       FROM tareas_asignadas t
       INNER JOIN expedientes e ON t.expediente_id = e.id
       INNER JOIN procesos p ON e.proceso_id = p.id
-      INNER JOIN etapas_proceso ep ON t.${TAREAS_ETAPA_COLUMN} = ep.id
+      INNER JOIN etapas_proceso ep ON t.${etapaColumn} = ep.id
       INNER JOIN db_usuarios.usuarios u ON t.usuario_id = u.id
       WHERE p.area_id = $1
         AND ep.rol_id = $2
         AND t.estado IN ('pendiente', 'visto')
         AND e.estado_activo = true
       ORDER BY t.id, t.fecha_asignacion ASC
-    `, [area_id, rol_id]);
+    `;
+
+    let result;
+    try {
+      result = await pool.query(buildQuery(), [area_id, rol_id]);
+    } catch (err) {
+      if (etapaColumn === "etapa_id" && isMissingColumnError(err, "etapa_id")) {
+        etapaColumn = "etapa_proceso_id";
+        TAREAS_ETAPA_COLUMN = etapaColumn;
+        result = await pool.query(buildQuery(), [area_id, rol_id]);
+      } else if (etapaColumn === "etapa_proceso_id" && isMissingColumnError(err, "etapa_proceso_id")) {
+        etapaColumn = "etapa_id";
+        TAREAS_ETAPA_COLUMN = etapaColumn;
+        result = await pool.query(buildQuery(), [area_id, rol_id]);
+      } else {
+        throw err;
+      }
+    }
 
     res.json(result.rows);
   } catch (err) {
@@ -604,6 +653,7 @@ app.patch("/api/tareas/:id", async (req, res) => {
 // Generar tareas automaticamente al cambiar de etapa
 // Busca usuarios por rol+area y crea tareas_asignadas
 async function generarTareasPorEtapa(expedienteId, etapaId, pool) {
+  const etapaColumn = await getTareasEtapaColumn();
   // Obtener la etapa para saber que rol requiere
   const etapaResult = await pool.query(
     "SELECT * FROM etapas_proceso WHERE id = $1",
@@ -653,12 +703,12 @@ async function generarTareasPorEtapa(expedienteId, etapaId, pool) {
       // Verificar si ya existe una tarea similar
       const existe = await pool.query(`
         SELECT id FROM tareas_asignadas 
-        WHERE expediente_id = $1 AND ${TAREAS_ETAPA_COLUMN} = $2 AND usuario_id = $3
+        WHERE expediente_id = $1 AND ${etapaColumn} = $2 AND usuario_id = $3
       `, [expedienteId, etapaId, usuario.id]);
 
       if (existe.rows.length === 0) {
         await pool.query(`
-          INSERT INTO tareas_asignadas (expediente_id, ${TAREAS_ETAPA_COLUMN}, usuario_id, tipo_tarea, estado)
+          INSERT INTO tareas_asignadas (expediente_id, ${etapaColumn}, usuario_id, tipo_tarea, estado)
           VALUES ($1, $2, $3, $4, 'pendiente')
         `, [expedienteId, etapaId, usuario.id, etapa.tipo_tarea]);
       }
