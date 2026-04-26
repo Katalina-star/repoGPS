@@ -6,6 +6,38 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Compatibilidad de esquema: algunas BD antiguas usan etapa_proceso_id
+let TAREAS_ETAPA_COLUMN = "etapa_id";
+
+async function resolveTareasEtapaColumn() {
+  try {
+    const result = await pool.query(
+      `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'tareas_asignadas'
+        AND column_name IN ('etapa_id', 'etapa_proceso_id')
+      ORDER BY CASE column_name
+        WHEN 'etapa_id' THEN 1
+        WHEN 'etapa_proceso_id' THEN 2
+        ELSE 99
+      END
+      LIMIT 1
+      `
+    );
+
+    if (result.rows.length > 0) {
+      TAREAS_ETAPA_COLUMN = result.rows[0].column_name;
+      console.log(`[ms-expedientes] Usando columna de etapa en tareas_asignadas: ${TAREAS_ETAPA_COLUMN}`);
+    } else {
+      console.warn("[ms-expedientes] No se encontró columna etapa_id ni etapa_proceso_id en tareas_asignadas. Se usará etapa_id por defecto.");
+    }
+  } catch (err) {
+    console.warn(`[ms-expedientes] No se pudo resolver columna de etapa: ${err.message}. Se usará etapa_id por defecto.`);
+  }
+}
+
 // Conexión a db_expedientes
 const pool = new Pool({
   user: process.env.DB_USER || "postgres",
@@ -475,7 +507,7 @@ app.get("/api/tareas/mis-tareas", async (req, res) => {
       FROM tareas_asignadas t
       INNER JOIN expedientes e ON t.expediente_id = e.id
       INNER JOIN procesos p ON e.proceso_id = p.id
-      INNER JOIN etapas_proceso ep ON t.etapa_id = ep.id
+      INNER JOIN etapas_proceso ep ON t.${TAREAS_ETAPA_COLUMN} = ep.id
       WHERE t.usuario_id = $1
         AND t.estado IN ('pendiente', 'visto')
         AND e.estado_activo = true
@@ -515,7 +547,7 @@ app.get("/api/tareas/bandeja", async (req, res) => {
       FROM tareas_asignadas t
       INNER JOIN expedientes e ON t.expediente_id = e.id
       INNER JOIN procesos p ON e.proceso_id = p.id
-      INNER JOIN etapas_proceso ep ON t.etapa_id = ep.id
+      INNER JOIN etapas_proceso ep ON t.${TAREAS_ETAPA_COLUMN} = ep.id
       INNER JOIN db_usuarios.usuarios u ON t.usuario_id = u.id
       WHERE p.area_id = $1
         AND ep.rol_id = $2
@@ -621,12 +653,12 @@ async function generarTareasPorEtapa(expedienteId, etapaId, pool) {
       // Verificar si ya existe una tarea similar
       const existe = await pool.query(`
         SELECT id FROM tareas_asignadas 
-        WHERE expediente_id = $1 AND etapa_id = $2 AND usuario_id = $3
+        WHERE expediente_id = $1 AND ${TAREAS_ETAPA_COLUMN} = $2 AND usuario_id = $3
       `, [expedienteId, etapaId, usuario.id]);
 
       if (existe.rows.length === 0) {
         await pool.query(`
-          INSERT INTO tareas_asignadas (expediente_id, etapa_id, usuario_id, tipo_tarea, estado)
+          INSERT INTO tareas_asignadas (expediente_id, ${TAREAS_ETAPA_COLUMN}, usuario_id, tipo_tarea, estado)
           VALUES ($1, $2, $3, $4, 'pendiente')
         `, [expedienteId, etapaId, usuario.id, etapa.tipo_tarea]);
       }
@@ -665,6 +697,8 @@ app.get("/api/subtipos", async (req, res) => {
 
 // Servidor
 const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
-  console.log(`Servidor ms-expedientes corriendo en el puerto ${PORT}`);
+resolveTareasEtapaColumn().finally(() => {
+  app.listen(PORT, () => {
+    console.log(`Servidor ms-expedientes corriendo en el puerto ${PORT}`);
+  });
 });
