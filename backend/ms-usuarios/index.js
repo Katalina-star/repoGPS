@@ -270,8 +270,28 @@ app.delete("/api/usuarios/:id", async (req, res) => {
 // MIGRACIÓN: Migrar passwords a bcrypt (comentada para pruebas)
 // ============================================
 async function migrarPasswords() {
-  // Deshabilitada temporalmente - habilitar cuando sia necesaria
-  console.log("Migración de passwords deshabilitada");
+  try {
+    const result = await pool.query(
+      `SELECT id, password_hash FROM usuarios WHERE password_hash IS NOT NULL`
+    );
+
+    let migrados = 0;
+    for (const usuario of result.rows) {
+      const actual = usuario.password_hash || "";
+      if (!actual.startsWith("$2")) {
+        const hash = await bcrypt.hash(actual, 10);
+        await pool.query("UPDATE usuarios SET password_hash = $1 WHERE id = $2", [
+          hash,
+          usuario.id,
+        ]);
+        migrados += 1;
+      }
+    }
+
+    console.log(`Migración de passwords completada. Usuarios migrados: ${migrados}`);
+  } catch (err) {
+    console.error("Error en migración de passwords:", err.message);
+  }
 }
 
 // ============================================
@@ -308,25 +328,10 @@ app.post("/api/login", async (req, res) => {
       return res.status(403).json({ error: "Usuario inactivo" });
     }
 
-    // Verificar password (soporta bcrypt nuevo y texto plano antiguo)
-    let match = false;
-    if (usuario.password_hash.startsWith('$2')) {
-      // Es hash bcrypt
-      match = await bcrypt.compare(password, usuario.password_hash);
-    } else {
-      // Es texto plano ( backwards compatibility)
-      match = (password === usuario.password_hash);
-    }
+    // Verificar password con bcrypt (HU-01)
+    const match = await bcrypt.compare(password, usuario.password_hash);
     if (!match) {
       return res.status(401).json({ error: "Credenciales inválidas" });
-    }
-
-    // Migrar password a bcrypt si está en texto plano
-    if (!usuario.password_hash.startsWith('$2')) {
-      await pool.query("UPDATE usuarios SET password_hash = $1 WHERE id = $2", [
-        await bcrypt.hash(password, 10),
-        usuario.id
-      ]);
     }
 
     // Generar JWT con area_id
