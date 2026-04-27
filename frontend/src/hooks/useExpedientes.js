@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react'
 import { useApi } from './useApi'
+import { useAuth } from '../context/useAuth'
 
 export const useExpedientes = () => {
+  const { user } = useAuth()
   const [expedientes, setExpedientes] = useState([])
   const [expedienteDetalle, setExpedienteDetalle] = useState(null)
   const [historial, setHistorial] = useState([])

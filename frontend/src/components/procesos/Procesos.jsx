@@ -2,15 +2,13 @@ import { useState, useEffect } from 'react'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useAreas } from '../../hooks/useAreas'
 
-const ProcesosPanel = () => {
+const ProcesosPanel = ({ busqueda = '' }) => {
   const { procesos, cargarProcesos, crearProceso, actualizarProceso, cambiarEstado } = useProcesos()
   const { areas, cargarAreas } = useAreas()
 
   const [formData, setFormData] = useState({ area_id: '', nombre: '', descripcion: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda] = useState('')
-
   useEffect(() => {
     Promise.all([cargarProcesos(), cargarAreas()])
   }, [cargarProcesos, cargarAreas])
@@ -57,7 +55,7 @@ const ProcesosPanel = () => {
         <div className="panel-top">
           <h3>{getTitulo()} Proceso</h3>
         </div>
-        <form onSubmit={handleSubmit} className="form-grid">
+        <form onSubmit={handleSubmit} className="form-grid" id="proceso-form">
           <div className="field">
             <label>Área</label>
             <select value={formData.area_id} onChange={e => setFormData({ ...formData, area_id: e.target.value })} required>
@@ -79,7 +77,7 @@ const ProcesosPanel = () => {
       </section>
 
       <div className="form-actions">
-        <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
+        <button type="submit" form="proceso-form" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
         {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormulario}>Cancelar</button>}
       </div>
 
@@ -111,7 +109,7 @@ const ProcesosPanel = () => {
                     <td>{area?.nombre || 'Sin área'}</td>
                     <td>
                       <button className="btn-mini btn-edit" onClick={() => handleEditar(p)}>Editar</button>
-                      <button className="btn-mini btn-danger" onClick={() => cambiarEstado(p.id, !p.estado_activo)}>Borrar</button>
+                      <button className="btn-mini btn-danger" onClick={() => cambiarEstado(p.id, !p.estado_activo)}>{p.estado_activo ? 'Borrar' : 'Reactivar'}</button>
                     </td>
                   </tr>
                 )

@@ -3,10 +3,10 @@ import { useEtapas } from '../../hooks/useEtapas'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useUsuarios } from '../../hooks/useUsuarios'
 
-const EtapasPanel = () => {
+const EtapasPanel = ({ busqueda = '' }) => {
   const { etapas, cargarEtapas, crearEtapa, actualizarEtapa, cambiarEstado } = useEtapas()
   const { procesos, cargarProcesos } = useProcesos()
-  const { usuarios, cargarUsuarios } = useUsuarios()
+  const { roles, cargarRoles } = useUsuarios()
 
   const [formData, setFormData] = useState({
     proceso_id: '',
@@ -18,11 +18,10 @@ const EtapasPanel = () => {
   })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda] = useState('')
 
   useEffect(() => {
-    Promise.all([cargarEtapas(), cargarProcesos(), cargarUsuarios()])
-  }, [cargarEtapas, cargarProcesos, cargarUsuarios])
+    Promise.all([cargarEtapas(), cargarProcesos(), cargarRoles()])
+  }, [cargarEtapas, cargarProcesos, cargarRoles])
 
   const limpiarFormulario = () => {
     setFormData({
@@ -30,8 +29,8 @@ const EtapasPanel = () => {
       nombre: '',
       orden: '',
       es_final: false,
-      requiere_aprobador: false,
-      usuario_asignado_id: ''
+      tipo_tarea: '',
+      rol_id: ''
     })
     setEditandoId(null)
   }
@@ -57,8 +56,8 @@ const EtapasPanel = () => {
       nombre: e.nombre,
       orden: String(e.orden),
       es_final: e.es_final,
-      requiere_aprobador: e.requiere_aprobador,
-      usuario_asignado_id: String(e.usuario_asignado_id || '')
+      tipo_tarea: e.tipo_tarea || '',
+      rol_id: String(e.rol_id || '')
     })
     setEditandoId(e.id)
   }
@@ -80,7 +79,7 @@ const EtapasPanel = () => {
         <div className="panel-top">
           <h3>{getTitulo()} Etapa</h3>
         </div>
-        <form onSubmit={handleSubmit} className="form-grid">
+        <form onSubmit={handleSubmit} className="form-grid" id="etapa-form">
           <div className="field">
             <label>Proceso</label>
             <select value={formData.proceso_id} onChange={e => setFormData({ ...formData, proceso_id: e.target.value })} required>
@@ -99,11 +98,20 @@ const EtapasPanel = () => {
             <input type="number" min="1" value={formData.orden} onChange={e => setFormData({ ...formData, orden: e.target.value })} required />
           </div>
           <div className="field">
-            <label>Usuario Asignado (opcional)</label>
-            <select value={formData.usuario_asignado_id} onChange={e => setFormData({ ...formData, usuario_asignado_id: e.target.value })}>
+            <label>Tipo de tarea</label>
+            <select value={formData.tipo_tarea} onChange={e => setFormData({ ...formData, tipo_tarea: e.target.value })}>
+              <option value="">Sin tarea</option>
+              <option value="revision">Revisión</option>
+              <option value="aprobacion">Aprobación</option>
+              <option value="visacion">Visación</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Rol responsable</label>
+            <select value={formData.rol_id} onChange={e => setFormData({ ...formData, rol_id: e.target.value })}>
               <option value="">Sin asignar</option>
-              {usuarios.filter(u => u.estado_activo).map(u => (
-                <option key={u.id} value={u.id}>{u.nombre_completo} ({u.rol_nombre})</option>
+              {roles.map(r => (
+                <option key={r.id} value={r.id}>{r.nombre}</option>
               ))}
             </select>
           </div>
@@ -113,17 +121,11 @@ const EtapasPanel = () => {
               Etapa Final (Cierra expediente)
             </label>
           </div>
-          <div className="field checkbox-field">
-            <label>
-              <input type="checkbox" checked={formData.requiere_aprobador} onChange={e => setFormData({ ...formData, requiere_aprobador: e.target.checked })} />
-              Requiere Aprobador (Avance automático deshabilitado)
-            </label>
-          </div>
         </form>
       </section>
 
       <div className="form-actions">
-        <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
+        <button type="submit" form="etapa-form" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
         {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormulario}>Cancelar</button>}
       </div>
 
@@ -142,8 +144,8 @@ const EtapasPanel = () => {
                 <th>Nombre</th>
                 <th>Orden</th>
                 <th>Proceso</th>
-                <th>Usuario Asignado</th>
-                <th>Req. Aprobador</th>
+                <th>Tipo Tarea</th>
+                <th>Rol</th>
                 <th>Es Final</th>
                 <th>Acciones</th>
               </tr>
@@ -151,18 +153,18 @@ const EtapasPanel = () => {
             <tbody>
               {filtrarData().map(etapa => {
                 const proc = procesos.find(p => p.id === etapa.proceso_id)
-                const usuario = usuarios.find(u => u.id === etapa.usuario_asignado_id)
+                const rol = roles.find(r => r.id === etapa.rol_id)
                 return (
                   <tr key={etapa.id}>
                     <td>{etapa.nombre}</td>
                     <td>{etapa.orden}</td>
                     <td>{proc?.nombre || 'Sin proceso'}</td>
-                    <td>{usuario?.nombre_completo || '-'}</td>
-                    <td>{etapa.requiere_aprobador ? '✓' : 'No'}</td>
+                    <td>{etapa.tipo_tarea || '-'}</td>
+                    <td>{rol?.nombre || '-'}</td>
                     <td>{etapa.es_final ? '✓' : 'No'}</td>
                     <td>
                       <button className="btn-mini btn-edit" onClick={() => handleEditar(etapa)}>Editar</button>
-                      <button className="btn-mini btn-danger" onClick={() => cambiarEstado(etapa.id, !etapa.estado_activo)}>Borrar</button>
+                      <button className="btn-mini btn-danger" onClick={() => cambiarEstado(etapa.id, !etapa.estado_activo)}>{etapa.estado_activo ? 'Borrar' : 'Reactivar'}</button>
                     </td>
                   </tr>
                 )
