@@ -11,7 +11,6 @@ export const useExpedientes = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { get, post } = useApi()
-  const user = JSON.parse(localStorage.getItem('user') || 'null')
 
   const cargarExpedientes = useCallback(async () => {
     setLoading(true)
