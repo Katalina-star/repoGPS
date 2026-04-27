@@ -1,10 +1,17 @@
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Configuración JWT
+const JWT_SECRET = process.env.JWT_SECRET || "repoGPS_jwt_secret_key_2026";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 
 // Configuración de conexión a db_usuarios
 const pool = new Pool({
@@ -259,6 +266,22 @@ app.delete("/api/usuarios/:id", async (req, res) => {
   }
 });
 
+// ============================================
+// MIGRACIÓN: Migrar passwords a bcrypt (comentada para pruebas)
+// ============================================
+async function migrarPasswords() {
+  // Deshabilitada temporalmente - habilitar cuando sia necesaria
+  console.log("Migración de passwords deshabilitada");
+}
+
+// ============================================
+// ENDPOINTS LOGIN/LOGOUT
+// ============================================
+
+app.post("/api/logout", (req, res) => {
+  res.json({ message: "Sesión cerrada correctamente" });
+});
+
 app.post("/api/login", async (req, res) => {
   const { correo, password } = req.body;
 
@@ -276,7 +299,7 @@ app.post("/api/login", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Usuario no encontrado" });
+      return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
     const usuario = result.rows[0];
@@ -285,18 +308,59 @@ app.post("/api/login", async (req, res) => {
       return res.status(403).json({ error: "Usuario inactivo" });
     }
 
-    if (usuario.password_hash !== password) {
-      return res.status(401).json({ error: "Contraseña incorrecta" });
+    // Verificar password (soporta bcrypt nuevo y texto plano antiguo)
+    let match = false;
+    if (usuario.password_hash.startsWith('$2')) {
+      // Es hash bcrypt
+      match = await bcrypt.compare(password, usuario.password_hash);
+    } else {
+      // Es texto plano ( backwards compatibility)
+      match = (password === usuario.password_hash);
+    }
+    if (!match) {
+      return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
+    // Migrar password a bcrypt si está en texto plano
+    if (!usuario.password_hash.startsWith('$2')) {
+      await pool.query("UPDATE usuarios SET password_hash = $1 WHERE id = $2", [
+        await bcrypt.hash(password, 10),
+        usuario.id
+      ]);
+    }
+
+    // Generar JWT con area_id
+    // Obtener el área principal del usuario (primera asignada)
+    let areaId = null;
+    try {
+      const areaResult = await pool.query(
+        "SELECT area_id FROM usuario_area WHERE usuario_id = $1 LIMIT 1",
+        [usuario.id]
+      );
+      if (areaResult.rows.length > 0) {
+        areaId = areaResult.rows[0].area_id;
+      }
+    } catch (err) {
+      console.error("Error al obtener area_id:", err.message);
+    }
+
+    const token = jwt.sign(
+      { id: usuario.id, rol_id: usuario.rol_id, area_id: areaId },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
     res.json({
-      message: "Login correcto",
+      message: "Login exitoso",
+      token,
+      acceso_permitido: true,
       usuario: {
         id: usuario.id,
         nombre_completo: usuario.nombre_completo,
         correo: usuario.correo,
         rol_id: usuario.rol_id,
         rol_nombre: usuario.rol_nombre,
+        area_id: areaId,
       },
     });
   } catch (err) {
@@ -306,6 +370,8 @@ app.post("/api/login", async (req, res) => {
 
 // Iniciar servidor en puerto 3000
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Servidor ms-usuarios corriendo en el puerto ${PORT}`);
+  // Ejecutar migración una vez al iniciar
+  await migrarPasswords();
 });

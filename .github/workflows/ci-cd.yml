@@ -61,6 +61,11 @@ jobs:
         working-directory: ./backend/ms-mantenedor
         run: npm install
 
+      # Backend ms-expedientes
+      - name: Instalar Backend Expedientes
+        working-directory: ./backend/ms-expedientes
+        run: npm install
+
   # ==========================================
   # FASE 2: LA FÁBRICA (Construir Imágenes en GitHub)
   # ==========================================
@@ -115,6 +120,18 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-mantenedor:latest
           cache-from: type=registry,ref=ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-mantenedor:latest
+          cache-to: type=inline
+
+      # ============================================
+      # Build ms-expedientes
+      # ============================================
+      - name: Construir y Subir Backend Expedientes
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/ms-expedientes
+          push: true
+          tags: ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-expedientes:latest
+          cache-from: type=registry,ref=ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-expedientes:latest
           cache-to: type=inline
 
   # ==========================================

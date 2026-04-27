@@ -1,16 +1,20 @@
 import { useState } from "react";
+import { useAuth } from "./context/useAuth";
 import "./login.css";
 
-function Login({ onLogin }) {
+function Login() {
+  const { login } = useAuth()
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/api/login`, {
@@ -24,14 +28,15 @@ function Login({ onLogin }) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Error al iniciar sesión");
+        setError(data.error || "Error al iniciar sesion");
         return;
       }
 
-      localStorage.setItem("usuario", JSON.stringify(data.usuario));
-      onLogin(data.usuario);
+      login(data.token, data.usuario)
     } catch {
       setError("No se pudo conectar con el servidor");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -48,10 +53,10 @@ function Login({ onLogin }) {
           </div>
 
           <div className="login-copy">
-            <span className="login-tag">Sistema de Gestión</span>
+            <span className="login-tag">Sistema de Gestion</span>
             <h2>Bienvenida de vuelta</h2>
             <p>
-              Ingresa con tu correo y contraseña para acceder al panel
+              Ingresa con tu correo y contrasena para acceder al panel
               administrativo.
             </p>
           </div>
@@ -59,10 +64,10 @@ function Login({ onLogin }) {
 
         <div className="login-right">
           <form className="login-card" onSubmit={handleSubmit}>
-            <h3>Iniciar sesión</h3>
+            <h3>Iniciar sesion</h3>
             <p className="login-subtitle">Accede a tu cuenta</p>
 
-            <label>Correo electrónico</label>
+            <label>Correo electronico</label>
             <input
               type="email"
               placeholder="ejemplo@correo.com"
@@ -71,10 +76,10 @@ function Login({ onLogin }) {
               required
             />
 
-            <label>Contraseña</label>
+            <label>Contrasena</label>
             <input
               type="password"
-              placeholder="••••••••"
+              placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -82,7 +87,9 @@ function Login({ onLogin }) {
 
             {error && <p className="login-error">{error}</p>}
 
-            <button type="submit">Entrar</button>
+            <button type="submit" disabled={loading}>
+              {loading ? "Iniciando..." : "Entrar"}
+            </button>
           </form>
         </div>
       </div>

@@ -250,9 +250,26 @@ app.patch("/api/areas/:id/estado", async (req, res) => {
   }
 });
 
+// Áreas por contratista
+app.get("/api/areas/contratista/:contratistaId", async (req, res) => {
+  const { contratistaId } = req.params;
+  try {
+    const result = await pool.query(`
+      SELECT a.id, a.nombre, a.estado_activo, a.contratista_id, c.razon_social AS contratista_nombre 
+      FROM areas a
+      INNER JOIN contratistas c ON a.contratista_id = c.id
+      WHERE a.contratista_id = $1 AND a.estado_activo = true AND c.estado_activo = true
+      ORDER BY a.nombre ASC
+    `, [contratistaId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================
-  // DISCIPLINAS
-  // ============================================
+// DISCIPLINAS
+// ============================================
 
 app.get("/api/disciplinas", async (req, res) => {
   try {
@@ -353,6 +370,24 @@ app.patch("/api/disciplinas/:id/estado", async (req, res) => {
   try {
     await pool.query("UPDATE disciplinas SET estado_activo = $1 WHERE id = $2", [estado_activo, id]);
     res.json({ message: "Estado actualizado correctamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Disciplinas por área
+app.get("/api/disciplinas/area/:areaId", async (req, res) => {
+  const { areaId } = req.params;
+  try {
+    const result = await pool.query(`
+      SELECT d.id, d.nombre, d.estado_activo, d.area_id, a.nombre AS area_nombre, a.contratista_id 
+      FROM disciplinas d
+      INNER JOIN areas a ON d.area_id = a.id
+      INNER JOIN contratistas c ON a.contratista_id = c.id
+      WHERE d.area_id = $1 AND d.estado_activo = true AND a.estado_activo = true AND c.estado_activo = true
+      ORDER BY d.nombre ASC
+    `, [areaId]);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
