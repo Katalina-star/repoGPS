@@ -5,11 +5,23 @@ import { useDisciplinas } from '../../hooks/useDisciplinas'
 import { useApi } from '../../hooks/useApi'
 import { useAuth } from '../../context/useAuth'
 import { useContratistas } from '../../hooks/useContratistas'
+import ExpedienteDetalle from './ExpedienteDetalle'
 
-const ExpedientesPanel = () => {
+const ExpedientesPanel = ({ busqueda = '' }) => {
   const { user } = useAuth()
   const { get } = useApi()
-  const { expedientes, cargarExpedientes, crearExpediente, abrirDetalle } = useExpedientes()
+  const {
+    expedientes,
+    expedienteDetalle,
+    historial,
+    documentos,
+    cargarExpedientes,
+    crearExpediente,
+    abrirDetalle,
+    cerrarDetalle,
+    avanzarExpediente,
+    devolverExpediente
+  } = useExpedientes()
   const { procesos, cargarProcesos } = useProcesos()
   const { cargarDisciplinas } = useDisciplinas()
   const { contratistas, cargarContratistas } = useContratistas()
@@ -26,7 +38,6 @@ const ExpedientesPanel = () => {
   const [etapasProceso, setEtapasProceso] = useState([])
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [filtroProceso, setFiltroProceso] = useState('')
-  const [busqueda] = useState('')
 
   // Listas filtradas para selects en cascada
   const [areasFiltradas, setAreasFiltradas] = useState([])
@@ -319,6 +330,17 @@ const ExpedientesPanel = () => {
           </table>
         </div>
       </section>
+
+      {expedienteDetalle && (
+        <ExpedienteDetalle
+          expediente={expedienteDetalle}
+          historial={historial}
+          documentos={documentos}
+          onCerrar={cerrarDetalle}
+          onAvanzar={avanzarExpediente}
+          onDevolver={devolverExpediente}
+        />
+      )}
     </>
   )
 }

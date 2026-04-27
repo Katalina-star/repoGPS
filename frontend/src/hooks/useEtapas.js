@@ -28,8 +28,8 @@ export const useEtapas = () => {
       nombre: etapa.nombre,
       orden: Number(etapa.orden),
       es_final: etapa.es_final,
-      requiere_aprobador: etapa.requiere_aprobador,
-      usuario_asignado_id: etapa.usuario_asignado_id ? Number(etapa.usuario_asignado_id) : null
+      tipo_tarea: etapa.tipo_tarea || null,
+      rol_id: etapa.rol_id ? Number(etapa.rol_id) : null
     })
     return data
   }, [post])
@@ -40,8 +40,8 @@ export const useEtapas = () => {
       nombre: etapa.nombre,
       orden: Number(etapa.orden),
       es_final: etapa.es_final,
-      requiere_aprobador: etapa.requiere_aprobador,
-      usuario_asignado_id: etapa.usuario_asignado_id ? Number(etapa.usuario_asignado_id) : null
+      tipo_tarea: etapa.tipo_tarea || null,
+      rol_id: etapa.rol_id ? Number(etapa.rol_id) : null
     })
     return data
   }, [put])

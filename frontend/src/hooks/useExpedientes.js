@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react'
 import { useApi } from './useApi'
+import { useAuth } from '../context/useAuth'
 
 export const useExpedientes = () => {
+  const { user } = useAuth()
   const [expedientes, setExpedientes] = useState([])
   const [expedienteDetalle, setExpedienteDetalle] = useState(null)
   const [historial, setHistorial] = useState([])
@@ -56,20 +58,28 @@ export const useExpedientes = () => {
   }, [])
 
   const avanzarExpediente = useCallback(async (id, observacion) => {
-    const data = await post(`/api/expedientes/${id}/avanzar`, { observacion })
+    const data = await post(`/api/expedientes/${id}/avanzar`, {
+      observacion,
+      usuario_id: user?.id,
+      rol_id: user?.rol_id
+    })
     if (data) {
       await cargarExpedientes()
     }
     return data
-  }, [post, cargarExpedientes])
+  }, [post, cargarExpedientes, user?.id, user?.rol_id])
 
   const devolverExpediente = useCallback(async (id, observacion) => {
-    const data = await post(`/api/expedientes/${id}/devolver`, { observacion })
+    const data = await post(`/api/expedientes/${id}/devolver`, {
+      observacion,
+      usuario_id: user?.id,
+      rol_id: user?.rol_id
+    })
     if (data) {
       await cargarExpedientes()
     }
     return data
-  }, [post, cargarExpedientes])
+  }, [post, cargarExpedientes, user?.id, user?.rol_id])
 
   return {
     expedientes,

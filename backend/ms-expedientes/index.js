@@ -52,6 +52,36 @@ function isMissingColumnError(err, colName) {
   return msg.includes(`column t.${colName} does not exist`) || msg.includes(`column ${colName} does not exist`);
 }
 
+async function getTareaConEtapa(tareaId) {
+  let etapaColumn = await getTareasEtapaColumn();
+  const buildQuery = () => `
+    SELECT t.id, t.usuario_id, t.estado, ep.rol_id
+    FROM tareas_asignadas t
+    INNER JOIN etapas_proceso ep ON t.${etapaColumn} = ep.id
+    WHERE t.id = $1
+    LIMIT 1
+  `;
+
+  try {
+    const result = await pool.query(buildQuery(), [tareaId]);
+    return result.rows[0] || null;
+  } catch (err) {
+    if (etapaColumn === "etapa_id" && isMissingColumnError(err, "etapa_id")) {
+      etapaColumn = "etapa_proceso_id";
+      TAREAS_ETAPA_COLUMN = etapaColumn;
+      const result = await pool.query(buildQuery(), [tareaId]);
+      return result.rows[0] || null;
+    }
+    if (etapaColumn === "etapa_proceso_id" && isMissingColumnError(err, "etapa_proceso_id")) {
+      etapaColumn = "etapa_id";
+      TAREAS_ETAPA_COLUMN = etapaColumn;
+      const result = await pool.query(buildQuery(), [tareaId]);
+      return result.rows[0] || null;
+    }
+    throw err;
+  }
+}
+
 // Conexión a db_expedientes
 const pool = new Pool({
   user: process.env.DB_USER || "postgres",
@@ -164,6 +194,23 @@ app.delete("/api/procesos/:id", async (req, res) => {
   }
 });
 
+app.patch("/api/procesos/:id/estado", async (req, res) => {
+  const { id } = req.params;
+  const { estado_activo } = req.body;
+  try {
+    const result = await pool.query(
+      "UPDATE procesos SET estado_activo = $1 WHERE id = $2 RETURNING *",
+      [Boolean(estado_activo), id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Proceso no encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================
 // ETAPAS PROCESO
 // ============================================
@@ -240,6 +287,23 @@ app.delete("/api/etapas-proceso/:id", async (req, res) => {
   try {
     await pool.query("UPDATE etapas_proceso SET estado_activo = false WHERE id = $1", [id]);
     res.json({ message: "Etapa eliminada lógicamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch("/api/etapas-proceso/:id/estado", async (req, res) => {
+  const { id } = req.params;
+  const { estado_activo } = req.body;
+  try {
+    const result = await pool.query(
+      "UPDATE etapas_proceso SET estado_activo = $1 WHERE id = $2 RETURNING *",
+      [Boolean(estado_activo), id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Etapa no encontrada" });
+    }
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -614,7 +678,30 @@ app.get("/api/tareas/bandeja", async (req, res) => {
 // Marcar tarea como vista
 app.patch("/api/tareas/:id/visto", async (req, res) => {
   const { id } = req.params;
+  const { usuario_id, rol_id } = req.body || {};
+
+  if (!usuario_id) {
+    return res.status(400).json({ error: "usuario_id es requerido" });
+  }
+
   try {
+    const tarea = await getTareaConEtapa(id);
+    if (!tarea) {
+      return res.status(404).json({ error: "Tarea no encontrada" });
+    }
+
+    if (Number(tarea.usuario_id) !== Number(usuario_id)) {
+      return res.status(403).json({ error: "No autorizado para esta tarea" });
+    }
+
+    if (rol_id && tarea.rol_id && Number(rol_id) !== Number(tarea.rol_id)) {
+      return res.status(403).json({ error: "Rol no autorizado para esta tarea" });
+    }
+
+    if (['completada', 'rechazada'].includes(tarea.estado)) {
+      return res.status(400).json({ error: "La tarea ya fue cerrada" });
+    }
+
     const result = await pool.query(
       "UPDATE tareas_asignadas SET estado = 'visto', fecha_visto = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *",
       [id]
@@ -631,8 +718,34 @@ app.patch("/api/tareas/:id/visto", async (req, res) => {
 // Actualizar estado de tarea (completada/rechazada)
 app.patch("/api/tareas/:id", async (req, res) => {
   const { id } = req.params;
-  const { estado, observacion } = req.body;
+  const { estado, observacion, usuario_id, rol_id } = req.body || {};
+
+  if (!usuario_id) {
+    return res.status(400).json({ error: "usuario_id es requerido" });
+  }
+
+  if (!['completada', 'rechazada'].includes(estado)) {
+    return res.status(400).json({ error: "estado inválido" });
+  }
+
   try {
+    const tarea = await getTareaConEtapa(id);
+    if (!tarea) {
+      return res.status(404).json({ error: "Tarea no encontrada" });
+    }
+
+    if (Number(tarea.usuario_id) !== Number(usuario_id)) {
+      return res.status(403).json({ error: "No autorizado para esta tarea" });
+    }
+
+    if (rol_id && tarea.rol_id && Number(rol_id) !== Number(tarea.rol_id)) {
+      return res.status(403).json({ error: "Rol no autorizado para esta tarea" });
+    }
+
+    if (['completada', 'rechazada'].includes(tarea.estado)) {
+      return res.status(400).json({ error: "La tarea ya fue cerrada" });
+    }
+
     const result = await pool.query(`
       UPDATE tareas_asignadas 
       SET estado = $1, 

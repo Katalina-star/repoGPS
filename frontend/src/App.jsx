@@ -10,7 +10,6 @@ import DisciplinasPanel from './components/mantenedores/Disciplinas'
 import ProcesosPanel from './components/procesos/Procesos'
 import EtapasPanel from './components/procesos/Etapas'
 import ExpedientesPanel from './components/expedientes/Expedientes'
-import ExpedienteDetalle from './components/expedientes/ExpedienteDetalle'
 import BandejaTareas from './components/bandeja/BandejaTareas'
 
 // esAdmin: rol_id === 1
@@ -36,19 +35,12 @@ const AppContent = () => {
   const { user, logout, loading } = useAuth()
   const [seccionActual, setSeccionActual] = useState('dashboard')
   const [busqueda, setBusqueda] = useState('')
-  const [mostrarDetalle, setMostrarDetalle] = useState(false)
-  const [expedienteDetalle, setExpedienteDetalle] = useState(null)
 
   // Calcular menú según rol (sin useEffect)
   const menuItems = esAdmin(user) ? menuAdmin : menuNoAdmin
 
   const handleLogout = () => {
     logout()
-  }
-
-  const cerrarDetalleExpediente = () => {
-    setMostrarDetalle(false)
-    setExpedienteDetalle(null)
   }
 
   const renderPanel = () => {
@@ -66,11 +58,11 @@ const AppContent = () => {
       case 'disciplinas':
         return <DisciplinasPanel />
       case 'procesos':
-        return <ProcesosPanel />
+        return <ProcesosPanel busqueda={busqueda} />
       case 'etapas':
-        return <EtapasPanel />
+        return <EtapasPanel busqueda={busqueda} />
       case 'expedientes':
-        return <ExpedientesPanel />
+        return <ExpedientesPanel busqueda={busqueda} />
       default:
         return <Dashboard esAdmin={esAdmin(user)} />
     }
@@ -101,13 +93,6 @@ const AppContent = () => {
       >
         {renderPanel()}
       </Content>
-
-      {mostrarDetalle && expedienteDetalle && (
-        <ExpedienteDetalle 
-          expediente={expedienteDetalle} 
-          onCerrar={cerrarDetalleExpediente} 
-        />
-      )}
     </div>
   )
 }

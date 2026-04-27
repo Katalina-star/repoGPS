@@ -1,16 +1,17 @@
-import { useExpedientes } from '../../hooks/useExpedientes'
-import { useApi } from '../../hooks/useApi'
-
-const ExpedienteDetalle = ({ expediente, onCerrar }) => {
-  const { historial, documentos, cargarExpedientes } = useExpedientes()
-  const { post } = useApi()
+const ExpedienteDetalle = ({
+  expediente,
+  historial = [],
+  documentos = [],
+  onCerrar,
+  onAvanzar,
+  onDevolver
+}) => {
 
   const handleAvanzar = async () => {
     const observacion = prompt('Observación (opcional):')
     if (observacion !== null) {
       try {
-        await post(`/api/expedientes/${expediente.id}/avanzar`, { observacion })
-        await cargarExpedientes()
+        await onAvanzar(expediente.id, observacion)
         onCerrar()
       } catch (err) {
         alert(err.message)
@@ -22,8 +23,7 @@ const ExpedienteDetalle = ({ expediente, onCerrar }) => {
     const observacion = prompt('Observación (opcional):')
     if (observacion !== null) {
       try {
-        await post(`/api/expedientes/${expediente.id}/devolver`, { observacion })
-        await cargarExpedientes()
+        await onDevolver(expediente.id, observacion)
         onCerrar()
       } catch (err) {
         alert(err.message)
