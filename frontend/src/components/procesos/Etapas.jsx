@@ -37,6 +37,10 @@ const EtapasPanel = ({ busqueda = '' }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if ((formData.tipo_tarea && !formData.rol_id) || (!formData.tipo_tarea && formData.rol_id)) {
+      alert('Tipo de tarea y rol responsable deben definirse juntos')
+      return
+    }
     try {
       if (editandoId) {
         await actualizarEtapa(editandoId, formData)
@@ -108,7 +112,11 @@ const EtapasPanel = ({ busqueda = '' }) => {
           </div>
           <div className="field">
             <label>Rol responsable</label>
-            <select value={formData.rol_id} onChange={e => setFormData({ ...formData, rol_id: e.target.value })}>
+            <select
+              value={formData.rol_id}
+              onChange={e => setFormData({ ...formData, rol_id: e.target.value })}
+              disabled={!formData.tipo_tarea}
+            >
               <option value="">Sin asignar</option>
               {roles.map(r => (
                 <option key={r.id} value={r.id}>{r.nombre}</option>

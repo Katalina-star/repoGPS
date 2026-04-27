@@ -52,6 +52,84 @@ function isMissingColumnError(err, colName) {
   return msg.includes(`column t.${colName} does not exist`) || msg.includes(`column ${colName} does not exist`);
 }
 
+const TIPOS_TAREA_VALIDOS = new Set(["revision", "aprobacion", "visacion"]);
+
+function normalizarTipoTarea(tipo_tarea) {
+  if (!tipo_tarea) return null;
+  const normalizado = String(tipo_tarea).trim().toLowerCase();
+  if (!TIPOS_TAREA_VALIDOS.has(normalizado)) {
+    return null;
+  }
+  return normalizado;
+}
+
+async function validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id }, etapaId = null) {
+  const procesoIdNum = Number(proceso_id);
+  const ordenNum = Number(orden);
+  const rolIdNum = rol_id ? Number(rol_id) : null;
+
+  if (!Number.isInteger(procesoIdNum) || procesoIdNum <= 0) {
+    throw new Error("proceso_id inválido");
+  }
+
+  if (!Number.isInteger(ordenNum) || ordenNum <= 0) {
+    throw new Error("orden debe ser un entero mayor a 0");
+  }
+
+  const tipoNormalizado = tipo_tarea ? normalizarTipoTarea(tipo_tarea) : null;
+  if (tipo_tarea && !tipoNormalizado) {
+    throw new Error("tipo_tarea inválido (use: revision, aprobacion o visacion)");
+  }
+
+  if ((tipoNormalizado && !rolIdNum) || (!tipoNormalizado && rolIdNum)) {
+    throw new Error("tipo_tarea y rol_id deben enviarse juntos");
+  }
+
+  const procesoExiste = await pool.query(
+    "SELECT id FROM procesos WHERE id = $1",
+    [procesoIdNum]
+  );
+  if (procesoExiste.rows.length === 0) {
+    throw new Error("Proceso no encontrado");
+  }
+
+  const ordenDuplicado = await pool.query(
+    `SELECT id FROM etapas_proceso
+     WHERE proceso_id = $1
+       AND orden = $2
+       AND estado_activo = true
+       AND ($3::int IS NULL OR id <> $3)
+     LIMIT 1`,
+    [procesoIdNum, ordenNum, etapaId]
+  );
+  if (ordenDuplicado.rows.length > 0) {
+    throw new Error("Ya existe una etapa activa con ese orden para el proceso");
+  }
+
+  if (Boolean(es_final)) {
+    const finalExistente = await pool.query(
+      `SELECT id FROM etapas_proceso
+       WHERE proceso_id = $1
+         AND es_final = true
+         AND estado_activo = true
+         AND ($2::int IS NULL OR id <> $2)
+       LIMIT 1`,
+      [procesoIdNum, etapaId]
+    );
+    if (finalExistente.rows.length > 0) {
+      throw new Error("Ya existe una etapa final activa para este proceso");
+    }
+  }
+
+  return {
+    proceso_id: procesoIdNum,
+    orden: ordenNum,
+    es_final: Boolean(es_final),
+    tipo_tarea: tipoNormalizado,
+    rol_id: rolIdNum
+  };
+}
+
 async function getTareaConEtapa(tareaId) {
   let etapaColumn = await getTareasEtapaColumn();
   const buildQuery = () => `
@@ -255,13 +333,14 @@ app.get("/api/etapas-proceso/:id", async (req, res) => {
 app.post("/api/etapas-proceso", async (req, res) => {
   const { proceso_id, nombre, orden, es_final, tipo_tarea, rol_id } = req.body;
   try {
+    const validado = await validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id });
     const result = await pool.query(
       "INSERT INTO etapas_proceso (proceso_id, nombre, orden, es_final, tipo_tarea, rol_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [proceso_id, nombre, orden, es_final || false, tipo_tarea || null, rol_id || null]
+      [validado.proceso_id, nombre, validado.orden, validado.es_final, validado.tipo_tarea, validado.rol_id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -269,16 +348,17 @@ app.put("/api/etapas-proceso/:id", async (req, res) => {
   const { id } = req.params;
   const { proceso_id, nombre, orden, es_final, tipo_tarea, rol_id } = req.body;
   try {
+    const validado = await validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id }, Number(id));
     const result = await pool.query(
       "UPDATE etapas_proceso SET proceso_id = $1, nombre = $2, orden = $3, es_final = $4, tipo_tarea = $5, rol_id = $6 WHERE id = $7 RETURNING *",
-      [proceso_id, nombre, orden, es_final, tipo_tarea, rol_id, id]
+      [validado.proceso_id, nombre, validado.orden, validado.es_final, validado.tipo_tarea, validado.rol_id, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Etapa no encontrada" });
     }
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -389,6 +469,10 @@ app.post("/api/expedientes/:id/avanzar", async (req, res) => {
   const { id } = req.params;
   const { usuario_id, observacion, rol_id } = req.body;
 
+  if (!usuario_id) {
+    return res.status(400).json({ error: "usuario_id es requerido" });
+  }
+
   // HU-02: Colaborador no puede avanzar expediente
   // Rol 4 = Colaborador (init.sql)
   if (Number(rol_id) === 4) {
@@ -441,6 +525,10 @@ app.post("/api/expedientes/:id/avanzar", async (req, res) => {
 app.post("/api/expedientes/:id/devolver", async (req, res) => {
   const { id } = req.params;
   const { usuario_id, observacion, rol_id } = req.body;
+
+  if (!usuario_id) {
+    return res.status(400).json({ error: "usuario_id es requerido" });
+  }
 
   // HU-02: Colaborador no puede devolver/rechazar expediente
   // Rol 4 = Colaborador (init.sql)
@@ -738,6 +826,10 @@ app.patch("/api/tareas/:id", async (req, res) => {
 
   if (!['completada', 'rechazada'].includes(estado)) {
     return res.status(400).json({ error: "estado inválido" });
+  }
+
+  if (estado === 'rechazada' && !String(observacion || '').trim()) {
+    return res.status(400).json({ error: "observacion es requerida para rechazar" });
   }
 
   try {
