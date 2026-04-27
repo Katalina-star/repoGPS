@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react'
 import { useEtapas } from '../../hooks/useEtapas'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useUsuarios } from '../../hooks/useUsuarios'
-import { useAreas } from '../../hooks/useAreas'
 
 const EtapasPanel = () => {
-  const { etapas, loading, cargarEtapas, crearEtapa, actualizarEtapa, cambiarEstado } = useEtapas()
+  const { etapas, cargarEtapas, crearEtapa, actualizarEtapa, cambiarEstado } = useEtapas()
   const { procesos, cargarProcesos } = useProcesos()
   const { usuarios, cargarUsuarios } = useUsuarios()
 
@@ -14,12 +13,12 @@ const EtapasPanel = () => {
     nombre: '',
     orden: '',
     es_final: false,
-    requiere_aprobador: false,
-    usuario_asignado_id: ''
+    tipo_tarea: '',
+    rol_id: ''
   })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda] = useState('')
 
   useEffect(() => {
     Promise.all([cargarEtapas(), cargarProcesos(), cargarUsuarios()])

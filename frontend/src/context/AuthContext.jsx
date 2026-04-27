@@ -1,32 +1,34 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useState, useCallback } from 'react'
 
 const AuthContext = createContext(null)
 
+export { AuthContext }
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    const userData = localStorage.getItem('user')
-    if (token && userData) {
-      setUser(JSON.parse(userData))
+  const [user, setUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token')
+      const userData = localStorage.getItem('user')
+      if (token && userData) {
+        return JSON.parse(userData)
+      }
     }
-    setLoading(false)
-  }, [])
+    return null
+  })
+  const [loading] = useState(false)
 
-  const login = (token, userData) => {
+  const login = useCallback((token, userData) => {
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
-  }
+  }, [])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     localStorage.setItem('logout_message', 'Sesión cerrada correctamente')
     setUser(null)
-  }
+  }, [])
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
@@ -35,10 +37,4 @@ export const AuthProvider = ({ children }) => {
   )
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth debe usarse dentro de AuthProvider')
-  }
-  return context
-}
+export default AuthProvider

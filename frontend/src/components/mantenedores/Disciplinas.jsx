@@ -6,8 +6,6 @@ const DisciplinasPanel = () => {
     disciplinas,
     areas,
     contratistas,
-    loading,
-    error,
     cargarDisciplinas,
     cargarAreas,
     cargarContratistas,
@@ -19,7 +17,7 @@ const DisciplinasPanel = () => {
   const [formData, setFormData] = useState({ nombre: '', area_id: '', contratista_id: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda] = useState('')
 
   useEffect(() => {
     Promise.all([cargarDisciplinas(), cargarAreas(), cargarContratistas()])

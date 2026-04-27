@@ -1,15 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useUsuarios } from '../../hooks/useUsuarios'
-import { useAuth } from '../../context/AuthContext'
 
 const UsuariosPanel = () => {
-  const { logout } = useAuth()
   const {
     usuarios,
     roles,
     areas,
-    loading,
-    error,
     cargarUsuarios,
     cargarRoles,
     cargarAreas,
@@ -27,7 +23,7 @@ const UsuariosPanel = () => {
   })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda] = useState('')
 
   useEffect(() => {
     Promise.all([cargarUsuarios(), cargarRoles(), cargarAreas()])

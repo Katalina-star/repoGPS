@@ -1,35 +1,19 @@
-import { StrictMode, useState, useEffect } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './context/useAuth'
 import App from './App.jsx'
 import Login from './Login.jsx'
 
 function Root() {
-  const { user, logout, loading } = useAuth()
-  const [appKey, setAppKey] = useState(0)
-
-  // Force re-render cuando cambia el usuario
-  const handleLogin = (usuario) => {
-    setAppKey(prev => prev + 1)
-  }
-
-  // Cuando el usuario hace logout, forzar re-render
-  useEffect(() => {
-    if (!user) {
-      setAppKey(prev => prev + 1)
-    }
-  }, [user])
+  const { user, loading } = useAuth()
 
   if (loading) {
     return <div className="loading">Cargando...</div>
   }
 
-  return user ? (
-    <App key={appKey} />
-  ) : (
-    <Login onLogin={handleLogin} />
-  )
+  return user ? <App /> : <Login />
 }
 
 createRoot(document.getElementById('root')).render(
@@ -37,7 +21,7 @@ createRoot(document.getElementById('root')).render(
     <AuthProvider>
       <Root />
     </AuthProvider>
-  </StrictMode>
+  </StrictMode>,
 )
 
 export default Root

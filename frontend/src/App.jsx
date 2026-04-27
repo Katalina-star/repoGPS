@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useAuth } from './context/AuthContext'
+import { useState } from 'react'
+import { useAuth } from './context/useAuth'
 import Sidebar from './components/layout/Sidebar'
 import Content from './components/layout/Content'
 import Dashboard from './components/dashboard/Dashboard'
@@ -38,22 +38,12 @@ const AppContent = () => {
   const [busqueda, setBusqueda] = useState('')
   const [mostrarDetalle, setMostrarDetalle] = useState(false)
   const [expedienteDetalle, setExpedienteDetalle] = useState(null)
-  const [menuItems, setMenuItems] = useState(menuAdmin)
 
-  // Actualizar menú según rol
-  useEffect(() => {
-    if (user) {
-      setMenuItems(esAdmin(user) ? menuAdmin : menuNoAdmin)
-    }
-  }, [user])
+  // Calcular menú según rol (sin useEffect)
+  const menuItems = esAdmin(user) ? menuAdmin : menuNoAdmin
 
   const handleLogout = () => {
     logout()
-  }
-
-  const abrirDetalleExpediente = (exp) => {
-    setExpedienteDetalle(exp)
-    setMostrarDetalle(true)
   }
 
   const cerrarDetalleExpediente = () => {

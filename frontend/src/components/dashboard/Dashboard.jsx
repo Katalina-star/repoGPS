@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/useAuth'
 import { useExpedientes } from '../../hooks/useExpedientes'
 import { useApi } from '../../hooks/useApi'
 
@@ -22,6 +22,7 @@ const Dashboard = ({ esAdmin = true }) => {
       }
     }
     cargar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const ahora = new Date()

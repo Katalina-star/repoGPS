@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -20,7 +20,8 @@ const handleResponse = async (res, logout, data) => {
     throw new Error(data.error || 'No tienes permisos para esta acción')
   }
   if (!res.ok) {
-    throw new Error(data.error || 'Error en la petición')
+    // Prefer structured error from body when available
+    throw new Error((data && data.error) || `Error en la petición (status: ${res.status})`)
   }
   return data
 }
@@ -29,9 +30,25 @@ const handleResponse = async (res, logout, data) => {
 export const useApi = () => {
   const { logout } = useAuth()
 
+  const parseResponseSafely = async (res) => {
+    const text = await res.text()
+    const contentType = res.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      try {
+        return JSON.parse(text)
+      } catch (e) {
+        // invalid JSON - keep diagnostic in logs for debugging
+        console.error('Invalid JSON response from API', e)
+        throw new Error(`Invalid JSON response from API: ${text.slice(0, 200)}`)
+      }
+    }
+    // Non-JSON response (likely HTML error page)
+    throw new Error(`Non-JSON response from API: ${text.slice(0, 200)}`)
+  }
+
   const get = useCallback(async (endpoint) => {
     const res = await fetch(`${API_URL}${endpoint}`, { headers: getAuthHeaders() })
-    const data = await res.json()
+    const data = await parseResponseSafely(res)
     return handleResponse(res, logout, data)
   }, [logout])
 
@@ -41,7 +58,7 @@ export const useApi = () => {
       headers: getAuthHeaders(),
       body: JSON.stringify(body)
     })
-    const data = await res.json()
+    const data = await parseResponseSafely(res)
     return handleResponse(res, logout, data)
   }, [logout])
 
@@ -51,7 +68,7 @@ export const useApi = () => {
       headers: getAuthHeaders(),
       body: JSON.stringify(body)
     })
-    const data = await res.json()
+    const data = await parseResponseSafely(res)
     return handleResponse(res, logout, data)
   }, [logout])
 
@@ -61,7 +78,7 @@ export const useApi = () => {
       headers: getAuthHeaders(),
       body: JSON.stringify(body)
     })
-    const data = await res.json()
+    const data = await parseResponseSafely(res)
     return handleResponse(res, logout, data)
   }, [logout])
 

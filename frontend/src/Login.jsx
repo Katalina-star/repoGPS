@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 import "./login.css";
 
 function Login() {
@@ -38,7 +38,7 @@ function Login() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Error al iniciar sesión");
+        setError(data.error || "Error al iniciar sesion");
         return;
       }
 
@@ -63,10 +63,10 @@ function Login() {
           </div>
 
           <div className="login-copy">
-            <span className="login-tag">Sistema de Gestión</span>
+            <span className="login-tag">Sistema de Gestion</span>
             <h2>Bienvenida de vuelta</h2>
             <p>
-              Ingresa con tu correo y contraseña para acceder al panel
+              Ingresa con tu correo y contrasena para acceder al panel
               administrativo.
             </p>
           </div>
@@ -74,7 +74,7 @@ function Login() {
 
         <div className="login-right">
           <form className="login-card" onSubmit={handleSubmit}>
-            <h3>Iniciar sesión</h3>
+            <h3>Iniciar sesion</h3>
             <p className="login-subtitle">Accede a tu cuenta</p>
 
             {mensajeInfo && (
@@ -99,7 +99,7 @@ function Login() {
               required
             />
 
-            <label>Contraseña</label>
+            <label>Contrasena</label>
             <input
               type="password"
               placeholder="••••••••"
@@ -111,7 +111,7 @@ function Login() {
             {error && <p className="login-error">{error}</p>}
 
               <button type="submit" disabled={loading}>
-                {loading ? "Ingresando..." : "Entrar"}
+                {loading ? "Iniciando..." : "Entrar"}
               </button>
           </form>
         </div>
