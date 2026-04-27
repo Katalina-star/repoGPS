@@ -8,7 +8,7 @@ export const useExpedientes = () => {
   const [documentos, setDocumentos] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const { get, post, put, patch } = useApi()
+  const { get, post } = useApi()
   const user = JSON.parse(localStorage.getItem('user') || 'null')
 
   const cargarExpedientes = useCallback(async () => {
