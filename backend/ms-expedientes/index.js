@@ -387,7 +387,13 @@ app.put("/api/expedientes/:id", async (req, res) => {
 // Al avanzar, genera tareas automaticamente para usuarios con el rol correspondiente
 app.post("/api/expedientes/:id/avanzar", async (req, res) => {
   const { id } = req.params;
-  const { usuario_id, observacion } = req.body;
+  const { usuario_id, observacion, rol_id } = req.body;
+
+  // HU-02: Colaborador no puede avanzar expediente
+  // Rol 4 = Colaborador (init.sql)
+  if (Number(rol_id) === 4) {
+    return res.status(403).json({ error: "Colaborador no puede avanzar expedientes" });
+  }
   try {
     // Obtener expediente actual
     const expResult = await pool.query("SELECT * FROM expedientes WHERE id = $1", [id]);
@@ -434,7 +440,13 @@ app.post("/api/expedientes/:id/avanzar", async (req, res) => {
 // Devolver expediente a etapa anterior
 app.post("/api/expedientes/:id/devolver", async (req, res) => {
   const { id } = req.params;
-  const { usuario_id, observacion } = req.body;
+  const { usuario_id, observacion, rol_id } = req.body;
+
+  // HU-02: Colaborador no puede devolver/rechazar expediente
+  // Rol 4 = Colaborador (init.sql)
+  if (Number(rol_id) === 4) {
+    return res.status(403).json({ error: "Colaborador no puede devolver expedientes" });
+  }
   try {
     const expResult = await pool.query("SELECT * FROM expedientes WHERE id = $1", [id]);
     if (expResult.rows.length === 0) {

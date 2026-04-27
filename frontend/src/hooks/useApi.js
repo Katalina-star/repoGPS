@@ -16,6 +16,9 @@ const handleResponse = async (res, logout, data) => {
     logout()
     throw new Error('Sesión expirada')
   }
+  if (res.status === 403) {
+    throw new Error(data.error || 'No tienes permisos para esta acción')
+  }
   if (!res.ok) {
     // Prefer structured error from body when available
     throw new Error((data && data.error) || `Error en la petición (status: ${res.status})`)

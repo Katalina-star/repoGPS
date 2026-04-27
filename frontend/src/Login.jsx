@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "./context/useAuth";
 import "./login.css";
 
@@ -7,13 +7,23 @@ function Login() {
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [mensajeInfo, setMensajeInfo] = useState("");
   const [loading, setLoading] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || "";
 
+  useEffect(() => {
+    const logoutMessage = localStorage.getItem("logout_message");
+    if (logoutMessage) {
+      setMensajeInfo(logoutMessage);
+      localStorage.removeItem("logout_message");
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setMensajeInfo("");
     setLoading(true);
 
     try {
@@ -67,7 +77,20 @@ function Login() {
             <h3>Iniciar sesion</h3>
             <p className="login-subtitle">Accede a tu cuenta</p>
 
-            <label>Correo electronico</label>
+            {mensajeInfo && (
+              <p style={{
+                background: '#e8f5e9',
+                color: '#1b5e20',
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: '1px solid #c8e6c9',
+                marginBottom: '12px'
+              }}>
+                {mensajeInfo}
+              </p>
+            )}
+
+            <label>Correo electrónico</label>
             <input
               type="email"
               placeholder="ejemplo@correo.com"
@@ -79,7 +102,7 @@ function Login() {
             <label>Contrasena</label>
             <input
               type="password"
-              placeholder="********"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -87,9 +110,9 @@ function Login() {
 
             {error && <p className="login-error">{error}</p>}
 
-            <button type="submit" disabled={loading}>
-              {loading ? "Iniciando..." : "Entrar"}
-            </button>
+              <button type="submit" disabled={loading}>
+                {loading ? "Iniciando..." : "Entrar"}
+              </button>
           </form>
         </div>
       </div>
