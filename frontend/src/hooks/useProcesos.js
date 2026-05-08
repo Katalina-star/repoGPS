@@ -5,13 +5,14 @@ export const useProcesos = () => {
   const [procesos, setProcesos] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const { get, post, put, patch } = useApi()
+  const { get, post, put, patch, del } = useApi()
 
   const cargarProcesos = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await get('/api/procesos')
+      // Trae todos los procesos (activos e inactivos) para poder filtrar localmente
+      const data = await get('/api/procesos?incluir_inactivos=true')
       if (Array.isArray(data)) {
         setProcesos(data)
       }
@@ -45,6 +46,12 @@ export const useProcesos = () => {
     return data
   }, [patch])
 
+  // Eliminar (borrar) - usa DELETE que tiene validación de dependencias
+  const eliminar = useCallback(async (id) => {
+    const data = await del(`/api/procesos/${id}`)
+    return data
+  }, [del])
+
   return {
     procesos,
     loading,
@@ -52,6 +59,7 @@ export const useProcesos = () => {
     cargarProcesos,
     crearProceso,
     actualizarProceso,
-    cambiarEstado
+    cambiarEstado,
+    eliminar
   }
 }

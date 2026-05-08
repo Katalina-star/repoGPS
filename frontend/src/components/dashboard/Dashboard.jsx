@@ -1,27 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useAuth } from '../../context/useAuth'
 import { useExpedientes } from '../../hooks/useExpedientes'
-import { useApi } from '../../hooks/useApi'
 
 const Dashboard = ({ esAdmin = true }) => {
   const { user } = useAuth()
   const { expedientes, cargarExpedientes } = useExpedientes()
-  const { get } = useApi()
-  const [etapasFinales, setEtapasFinales] = useState([])
 
   useEffect(() => {
-    const cargar = async () => {
-      await cargarExpedientes()
-      try {
-        const data = await get('/api/etapas-proceso')
-        if (Array.isArray(data)) {
-          setEtapasFinales(data.filter(e => e.es_final).map(e => e.nombre.toLowerCase()))
-        }
-      } catch (err) {
-        console.error('Error al cargar etapas:', err)
-      }
-    }
-    cargar()
+    cargarExpedientes()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -40,31 +26,24 @@ const Dashboard = ({ esAdmin = true }) => {
     terminado: 0
   }
 
+  // Usar el campo 'estado' del backend: Pendiente, En Revision, Aprobado
   expedientesFiltrados.forEach(exp => {
-    const etapa = (exp.etapa_actual || '').toLowerCase()
-    
-    // Terminado: etapa es final
-    if (etapasFinales.some(ef => etapa.includes(ef))) {
-      stats.terminado++
-      return
-    }
-
-    // Atrasado: +10 días sin cambios Y ya fue iniciado
     const fechaExp = exp.fecha_actualizacion || exp.fecha_creacion
     const diasTranscurridos = Math.floor((ahora - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
-    if (diasTranscurridos > 10 && etapa !== 'pendiente' && etapa !== '') {
-      stats.atrasado++
-      return
+    
+    if (exp.estado === 'Aprobado') {
+      stats.terminado++
+    } else if (exp.estado === 'En Revision') {
+      // Atrasado: más de 10 días en revisión
+      if (diasTranscurridos > 10) {
+        stats.atrasado++
+      } else {
+        stats.enCurso++
+      }
+    } else {
+      // Pendiente o sin asignar
+      stats.pendiente++
     }
-
-    // En Curso: etapa asignada y no es Pendiente
-    if (etapa && !etapa.includes('pendiente')) {
-      stats.enCurso++
-      return
-    }
-
-    // Pendiente: sin iniciar o Pendiente
-    stats.pendiente++
   })
 
   return (

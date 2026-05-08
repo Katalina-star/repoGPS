@@ -312,6 +312,103 @@ button { font-family: inherit; }
   justify-content: space-between;
   align-items: center;
   padding: 15px 25px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.table-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.search-input {
+  padding: 10px 12px 10px 36px;
+  border: 2px solid #e2e8f0;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  min-width: 220px;
+  transition: all 0.25s ease;
+  background: #f8fafc;
+  color: var(--text-main);
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
+  min-width: 250px;
+}
+
+.search-input:hover:not(:focus) {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.tabs-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.hint-text {
+  font-size: 0.75rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.hint-bar {
+  padding: 10px 25px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.8rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.tabs-container {
+  display: flex;
+  align-items: center;
+}
+
+.tab-hint {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  padding: 0 12px;
+  white-space: nowrap;
+  font-style: italic;
+}
+
+.category-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 6px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
 }
 
 .tabs {
@@ -589,4 +686,35 @@ button { font-family: inherit; }
 .etapa-aprobador {
   background-color: #dbeafe;
   color: #1e40af;
+}
+
+/* Categorías Panel */
+.selected-row {
+  background-color: #eff6ff !important;
+}
+
+.category-badge {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.panel-top h4 {
+  font-size: 1rem;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.btn-outline:hover {
+  background-color: #f1f5f9;
+  color: var(--text-main);
 }

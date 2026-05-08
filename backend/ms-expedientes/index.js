@@ -175,13 +175,23 @@ const pool = new Pool({
 
 app.get("/api/procesos", async (req, res) => {
   try {
-    const { area_id } = req.query;
-    let query = "SELECT * FROM procesos WHERE estado_activo = true";
+    const { area_id, incluir_inactivos } = req.query;
+    let query = "SELECT id, area_id, nombre, descripcion, estado_activo FROM procesos";
     let params = [];
+    let conditions = [];
+    
+    // Por defecto solo activos, usar ?incluir_inactivos=true para ver todos
+    if (incluir_inactivos !== 'true') {
+      conditions.push("estado_activo = true");
+    }
     
     if (area_id && area_id !== undefined && area_id !== '') {
-      query += " AND area_id = $1";
+      conditions.push("area_id = $1");
       params.push(Number(area_id));
+    }
+    
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
     }
     
     query += " ORDER BY id ASC";
@@ -235,9 +245,19 @@ app.get("/api/procesos/:id", async (req, res) => {
 app.post("/api/procesos", async (req, res) => {
   const { area_id, nombre, descripcion } = req.body;
   try {
+    if (!area_id) {
+      return res.status(400).json({ error: "area_id es obligatorio" });
+    }
+    
+    // Validar que area_id sea un número válido
+    const areaIdNum = Number(area_id);
+    if (!Number.isInteger(areaIdNum) || areaIdNum <= 0) {
+      return res.status(400).json({ error: "area_id debe ser un número válido" });
+    }
+
     const result = await pool.query(
       "INSERT INTO procesos (area_id, nombre, descripcion) VALUES ($1, $2, $3) RETURNING *",
-      [area_id, nombre, descripcion]
+      [areaIdNum, nombre, descripcion]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -249,9 +269,19 @@ app.put("/api/procesos/:id", async (req, res) => {
   const { id } = req.params;
   const { area_id, nombre, descripcion } = req.body;
   try {
+    if (!area_id) {
+      return res.status(400).json({ error: "area_id es obligatorio" });
+    }
+    
+    // Validar que area_id sea un número válido
+    const areaIdNum = Number(area_id);
+    if (!Number.isInteger(areaIdNum) || areaIdNum <= 0) {
+      return res.status(400).json({ error: "area_id debe ser un número válido" });
+    }
+
     const result = await pool.query(
       "UPDATE procesos SET area_id = $1, nombre = $2, descripcion = $3 WHERE id = $4 RETURNING *",
-      [area_id, nombre, descripcion, id]
+      [areaIdNum, nombre, descripcion, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Proceso no encontrado" });
@@ -265,6 +295,24 @@ app.put("/api/procesos/:id", async (req, res) => {
 app.delete("/api/procesos/:id", async (req, res) => {
   const { id } = req.params;
   try {
+    // Verificar que no haya etapas activas asociadas
+    const etapasCount = await pool.query(
+      "SELECT COUNT(*) FROM etapas_proceso WHERE proceso_id = $1 AND estado_activo = true",
+      [id]
+    );
+    if (parseInt(etapasCount.rows[0].count) > 0) {
+      return res.status(400).json({ error: "No se puede eliminar el proceso porque tiene etapas activas. Elimine las etapas primero." });
+    }
+
+    // Verificar que no haya expedientes activos asociados
+    const expedientesCount = await pool.query(
+      "SELECT COUNT(*) FROM expedientes WHERE proceso_id = $1 AND estado_activo = true",
+      [id]
+    );
+    if (parseInt(expedientesCount.rows[0].count) > 0) {
+      return res.status(400).json({ error: "No se puede eliminar el proceso porque tiene expedientes activos." });
+    }
+
     await pool.query("UPDATE procesos SET estado_activo = false WHERE id = $1", [id]);
     res.json({ message: "Proceso eliminado lógicamente" });
   } catch (err) {
@@ -295,9 +343,20 @@ app.patch("/api/procesos/:id/estado", async (req, res) => {
 
 app.get("/api/etapas-proceso", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM etapas_proceso WHERE estado_activo = true ORDER BY proceso_id, orden ASC"
-    );
+    const { incluir_inactivos } = req.query;
+    let query = "SELECT * FROM etapas_proceso";
+    let conditions = [];
+    
+    if (incluir_inactivos !== 'true') {
+      conditions.push("estado_activo = true");
+    }
+    
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
+    }
+    
+    query += " ORDER BY proceso_id, orden ASC";
+    const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -396,14 +455,28 @@ app.patch("/api/etapas-proceso/:id/estado", async (req, res) => {
 app.get("/api/expedientes", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT e.*, p.nombre AS proceso_nombre, ep.nombre AS etapa_actual
+      SELECT e.*, p.nombre AS proceso_nombre, ep.nombre AS etapa_actual, ep.es_final
       FROM expedientes e
       LEFT JOIN procesos p ON e.proceso_id = p.id
       LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
       WHERE e.estado_activo = true
       ORDER BY e.fecha_creacion DESC
     `);
-    res.json(result.rows);
+    
+    // Agregar campo de estado basado en la etapa
+    const ExpedientesConEstado = result.rows.map(exp => {
+      let estado = 'Pendiente';
+      if (exp.etapa_actual_id) {
+        if (exp.es_final) {
+          estado = 'Aprobado';
+        } else {
+          estado = 'En Revision';
+        }
+      }
+      return { ...exp, estado };
+    });
+    
+    res.json(ExpedientesConEstado);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

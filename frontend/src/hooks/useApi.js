@@ -82,5 +82,14 @@ export const useApi = () => {
     return handleResponse(res, logout, data)
   }, [logout])
 
-  return { get, post, put, patch }
+  const del = useCallback(async (endpoint) => {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    })
+    const data = await parseResponseSafely(res)
+    return handleResponse(res, logout, data)
+  }, [logout])
+
+  return { get, post, put, patch, del }
 }

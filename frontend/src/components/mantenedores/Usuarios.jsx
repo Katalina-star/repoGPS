@@ -23,11 +23,15 @@ const UsuariosPanel = () => {
   })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda] = useState('')
+  const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => {
     Promise.all([cargarUsuarios(), cargarRoles(), cargarAreas()])
   }, [cargarUsuarios, cargarRoles, cargarAreas])
+
+  useEffect(() => {
+    setBusqueda('')
+  }, [tabActiva])
 
   const limpiarFormulario = () => {
     setFormData({
@@ -64,6 +68,15 @@ const UsuariosPanel = () => {
       password_hash: u.password_hash || '123456'
     })
     setEditandoId(u.id)
+  }
+
+  const handleCambiarEstado = async (id, nuevoEstado) => {
+    try {
+      await cambiarEstado(id, nuevoEstado)
+      cargarUsuarios()
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   const filtrarData = (lista) => {
@@ -142,6 +155,18 @@ const UsuariosPanel = () => {
             <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
             <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
           </div>
+          <div className="table-controls">
+            <div className="search-wrapper">
+              <span className="search-icon">🔍</span>
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder="Buscar..." 
+                value={busqueda} 
+                onChange={e => setBusqueda(e.target.value)} 
+              />
+            </div>
+          </div>
         </div>
         <div className="table-wrap">
           <table className="users-table">
@@ -163,7 +188,7 @@ const UsuariosPanel = () => {
                   <td>{u.area_nombre || 'No asignada'}</td>
                   <td>
                     <button className="btn-mini btn-edit" onClick={() => handleEditar(u)}>Editar</button>
-                    <button className="btn-mini btn-danger" onClick={() => cambiarEstado(u.id, !u.estado_activo)}>{u.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                    <button className="btn-mini btn-danger" onClick={() => handleCambiarEstado(u.id, !u.estado_activo)}>{u.estado_activo ? 'Borrar' : 'Reactivar'}</button>
                   </td>
                 </tr>
               ))}

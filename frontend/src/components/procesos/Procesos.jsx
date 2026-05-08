@@ -2,16 +2,22 @@ import { useState, useEffect } from 'react'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useAreas } from '../../hooks/useAreas'
 
-const ProcesosPanel = ({ busqueda = '' }) => {
-  const { procesos, cargarProcesos, crearProceso, actualizarProceso, cambiarEstado } = useProcesos()
+const ProcesosPanel = () => {
+  const { procesos, cargarProcesos, crearProceso, actualizarProceso, cambiarEstado, eliminar } = useProcesos()
   const { areas, cargarAreas } = useAreas()
 
   const [formData, setFormData] = useState({ area_id: '', nombre: '', descripcion: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
+  const [busqueda, setBusqueda] = useState('')
+
   useEffect(() => {
     Promise.all([cargarProcesos(), cargarAreas()])
   }, [cargarProcesos, cargarAreas])
+
+  useEffect(() => {
+    setBusqueda('')
+  }, [tabActiva])
 
   const limpiarFormulario = () => {
     setFormData({ area_id: '', nombre: '', descripcion: '' })
@@ -38,6 +44,37 @@ const ProcesosPanel = ({ busqueda = '' }) => {
     setEditandoId(p.id)
   }
 
+  const handleCambiarEstado = async (id, nuevoEstado) => {
+    try {
+      await cambiarEstado(id, nuevoEstado)
+      cargarProcesos()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  // Eliminar usa DELETE que tiene validación de dependencias
+  const handleEliminar = async (id) => {
+    try {
+      await eliminar(id)
+      cargarProcesos()
+      // Después de borrar, ir a inactivos para ver el proceso marcado
+      setTabActiva('inactivos')
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  // Reactivar usa PATCH
+  const handleReactivar = async (id) => {
+    try {
+      await cambiarEstado(id, true)
+      cargarProcesos()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
   const filtrarData = () => {
     return procesos
       .filter(p => tabActiva === 'activos' ? p.estado_activo : !p.estado_activo)
@@ -58,62 +95,80 @@ const ProcesosPanel = ({ busqueda = '' }) => {
         <form onSubmit={handleSubmit} className="form-grid" id="proceso-form">
           <div className="field">
             <label>Área</label>
-            <select value={formData.area_id} onChange={e => setFormData({ ...formData, area_id: e.target.value })} required>
+            <select
+              value={formData.area_id}
+              onChange={e => setFormData({ ...formData, area_id: e.target.value })}
+              required
+            >
               <option value="">Seleccione...</option>
-              {areas.filter(a => a.estado_activo).map(a => (
-                <option key={a.id} value={a.id}>{a.nombre} ({a.contratista_nombre})</option>
-              ))}
+              {areas.filter(a => a.estado_activo).map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
             </select>
           </div>
           <div className="field">
             <label>Nombre del Proceso</label>
-            <input type="text" value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} required />
+            <input
+              type="text"
+              value={formData.nombre}
+              onChange={e => setFormData({ ...formData, nombre: e.target.value })}
+              required
+            />
           </div>
           <div className="field">
             <label>Descripción</label>
-            <textarea value={formData.descripcion} onChange={e => setFormData({ ...formData, descripcion: e.target.value })} />
+            <input
+              type="text"
+              value={formData.descripcion}
+              onChange={e => setFormData({ ...formData, descripcion: e.target.value })}
+            />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
+            {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormulario}>Cancelar</button>}
           </div>
         </form>
       </section>
 
-      <div className="form-actions">
-        <button type="submit" form="proceso-form" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
-        {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormulario}>Cancelar</button>}
-      </div>
-
       <section className="panel">
         <div className="panel-top table-top">
-          <h3>Procesos por Área</h3>
           <div className="tabs">
             <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
             <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
+          </div>
+          <div className="table-controls">
+            <div className="search-wrapper">
+              <span className="search-icon">🔍</span>
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder="Buscar..." 
+                value={busqueda} 
+                onChange={e => setBusqueda(e.target.value)} 
+              />
+            </div>
           </div>
         </div>
         <div className="table-wrap">
           <table className="users-table">
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>Descripción</th>
+                <th>Proceso</th>
                 <th>Área</th>
+                <th>Descripción</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filtrarData().map(p => {
-                const area = areas.find(a => a.id === p.area_id)
-                return (
-                  <tr key={p.id}>
-                    <td>{p.nombre}</td>
-                    <td>{p.descripcion || '-'}</td>
-                    <td>{area?.nombre || 'Sin área'}</td>
-                    <td>
-                      <button className="btn-mini btn-edit" onClick={() => handleEditar(p)}>Editar</button>
-                      <button className="btn-mini btn-danger" onClick={() => cambiarEstado(p.id, !p.estado_activo)}>{p.estado_activo ? 'Borrar' : 'Reactivar'}</button>
-                    </td>
-                  </tr>
-                )
-              })}
+              {filtrarData().map(p => (
+                <tr key={p.id}>
+                  <td>{p.nombre}</td>
+                  <td>{areas.find(a => a.id === p.area_id)?.nombre || 'No asignada'}</td>
+                  <td>{p.descripcion || '-'}</td>
+                  <td>
+                    <button className="btn-mini btn-edit" onClick={() => handleEditar(p)}>Editar</button>
+                    <button className="btn-mini btn-danger" onClick={() => p.estado_activo ? handleEliminar(p.id) : handleReactivar(p.id)}>{p.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -1,7 +1,7 @@
 const Sidebar = ({ seccionActual, onCambiarSeccion, onLogout, menuItems = [], titulos = {}, usuario = {} }) => {
   // Categorías para el menú admin
   const categoriasAdmin = {
-    'Gestion': ['dashboard', 'usuarios', 'contratistas', 'areas', 'disciplinas'],
+    'Gestion': ['dashboard', 'usuarios', 'contratistas', 'areas', 'disciplinas', 'categorias'],
     'Motor de Procesos': ['procesos', 'etapas'],
     'Expedientes': ['expedientes']
   }

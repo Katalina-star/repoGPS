@@ -394,78 +394,131 @@ app.get("/api/disciplinas/area/:areaId", async (req, res) => {
 });
 
 // ============================================
+// HELPERS VALIDACIÓN CATEGORÍAS/SUBTIPOS
+// ============================================
+
+async function validarCategoriaActiva(categoriaId) {
+  const result = await pool.query(
+    "SELECT id FROM categorias WHERE id = $1 AND estado_activo = true",
+    [categoriaId]
+  );
+  return result.rows.length > 0;
+}
+
+// ============================================
 // CATEGORÍAS
 // ============================================
 
-  app.get("/api/categorias", async (req, res) => {
-    try {
-      const result = await pool.query(
-        "SELECT * FROM categorias WHERE estado_activo = true ORDER BY id ASC"
-      );
-      res.json(result.rows);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+app.get("/api/categorias", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM categorias ORDER BY id ASC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  app.get("/api/categorias/:id", async (req, res) => {
-    const { id } = req.params;
-    try {
-      const result = await pool.query(
-        "SELECT * FROM categorias WHERE id = $1",
-        [id]
-      );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Categoría no encontrada" });
-      }
-      res.json(result.rows[0]);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+app.get("/api/categorias/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      "SELECT * FROM categorias WHERE id = $1",
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Categoría no encontrada" });
     }
-  });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  app.post("/api/categorias", async (req, res) => {
-    const { nombre, descripcion } = req.body;
-    try {
-      const result = await pool.query(
-        "INSERT INTO categorias (nombre, descripcion) VALUES ($1, $2) RETURNING *",
-        [nombre, descripcion]
-      );
-      res.status(201).json(result.rows[0]);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+app.post("/api/categorias", async (req, res) => {
+  const { nombre, descripcion } = req.body;
+  try {
+    // Validar nombre único
+    const existeNombre = await pool.query(
+      "SELECT id FROM categorias WHERE LOWER(nombre) = LOWER($1)",
+      [nombre]
+    );
+    if (existeNombre.rows.length > 0) {
+      return res.status(400).json({ error: "Ya existe una categoría con este nombre" });
     }
-  });
 
-  app.put("/api/categorias/:id", async (req, res) => {
-    const { id } = req.params;
-    const { nombre, descripcion } = req.body;
-    try {
-      const result = await pool.query(
-        "UPDATE categorias SET nombre = $1, descripcion = $2 WHERE id = $3 RETURNING *",
-        [nombre, descripcion, id]
-      );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Categoría no encontrada" });
-      }
-      res.json(result.rows[0]);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+    const result = await pool.query(
+      "INSERT INTO categorias (nombre, descripcion) VALUES ($1, $2) RETURNING *",
+      [nombre, descripcion]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-  app.delete("/api/categorias/:id", async (req, res) => {
-    const { id } = req.params;
-    try {
-      await pool.query(
-        "UPDATE categorias SET estado_activo = false WHERE id = $1",
-        [id]
-      );
-      res.json({ message: "Categoría eliminada lógicamente" });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+app.put("/api/categorias/:id", async (req, res) => {
+  const { id } = req.params;
+  const { nombre, descripcion } = req.body;
+  try {
+    // Validar nombre único excluyendo el registro actual
+    const existeNombre = await pool.query(
+      "SELECT id FROM categorias WHERE LOWER(nombre) = LOWER($1) AND id <> $2",
+      [nombre, id]
+    );
+    if (existeNombre.rows.length > 0) {
+      return res.status(400).json({ error: "Ya existe una categoría con este nombre" });
     }
-  });
+
+    const result = await pool.query(
+      "UPDATE categorias SET nombre = $1, descripcion = $2 WHERE id = $3 RETURNING *",
+      [nombre, descripcion, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Categoría no encontrada" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/categorias/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query(
+      "UPDATE categorias SET estado_activo = false WHERE id = $1",
+      [id]
+    );
+    res.json({ message: "Categoría eliminada lógicamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch("/api/categorias/:id/estado", async (req, res) => {
+  const { id } = req.params;
+  const { estado_activo } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Desactivar/activar la categoría
+    await client.query("UPDATE categorias SET estado_activo = $1 WHERE id = $2", [estado_activo, id]);
+    
+    // Desactivar/activar todos los subtipos relacionados
+    await client.query("UPDATE subtipos SET estado_activo = $1 WHERE categoria_id = $2", [estado_activo, id]);
+    
+    await client.query('COMMIT');
+    res.json({ message: "Estado actualizado correctamente" });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
 
   // ============================================
   // SUBTIPOS
@@ -474,10 +527,9 @@ app.get("/api/disciplinas/area/:areaId", async (req, res) => {
   app.get("/api/subtipos", async (req, res) => {
     try {
       const result = await pool.query(`
-        SELECT s.id, s.nombre, s.descripcion, s.estado_activo, s.categoria_id, c.nombre AS categoria_nombre 
+        SELECT s.id, s.nombre, s.descripcion, s.estado_activo, s.categoria_id, c.nombre AS categoria_nombre, c.estado_activo AS categoria_activa
         FROM subtipos s
         INNER JOIN categorias c ON s.categoria_id = c.id
-        WHERE s.estado_activo = true 
         ORDER BY s.id ASC
       `);
       res.json(result.rows);
@@ -506,7 +558,7 @@ app.get("/api/disciplinas/area/:areaId", async (req, res) => {
     const { categoriaId } = req.params;
     try {
       const result = await pool.query(
-        "SELECT * FROM subtipos WHERE categoria_id = $1 AND estado_activo = true ORDER BY nombre ASC",
+        "SELECT * FROM subtipos WHERE categoria_id = $1 ORDER BY nombre ASC",
         [categoriaId]
       );
       res.json(result.rows);
@@ -518,6 +570,21 @@ app.get("/api/disciplinas/area/:areaId", async (req, res) => {
   app.post("/api/subtipos", async (req, res) => {
     const { categoria_id, nombre, descripcion } = req.body;
     try {
+      // Validar que la categoría exista y esté activa
+      const categoriaActiva = await validarCategoriaActiva(categoria_id);
+      if (!categoriaActiva) {
+        return res.status(400).json({ error: "La categoría no existe o está inactiva" });
+      }
+
+      // Validar nombre único por categoría
+      const existeNombre = await pool.query(
+        "SELECT id FROM subtipos WHERE LOWER(nombre) = LOWER($1) AND categoria_id = $2",
+        [nombre, categoria_id]
+      );
+      if (existeNombre.rows.length > 0) {
+        return res.status(400).json({ error: "Ya existe un subtipo con este nombre en esta categoría" });
+      }
+
       const result = await pool.query(
         "INSERT INTO subtipos (categoria_id, nombre, descripcion) VALUES ($1, $2, $3) RETURNING *",
         [categoria_id, nombre, descripcion]
@@ -532,6 +599,21 @@ app.get("/api/disciplinas/area/:areaId", async (req, res) => {
     const { id } = req.params;
     const { categoria_id, nombre, descripcion } = req.body;
     try {
+      // Validar que la categoría exista y esté activa
+      const categoriaActiva = await validarCategoriaActiva(categoria_id);
+      if (!categoriaActiva) {
+        return res.status(400).json({ error: "La categoría no existe o está inactiva" });
+      }
+
+      // Validar nombre único por categoría excluyendo el registro actual
+      const existeNombre = await pool.query(
+        "SELECT id FROM subtipos WHERE LOWER(nombre) = LOWER($1) AND categoria_id = $2 AND id <> $3",
+        [nombre, categoria_id, id]
+      );
+      if (existeNombre.rows.length > 0) {
+        return res.status(400).json({ error: "Ya existe un subtipo con este nombre en esta categoría" });
+      }
+
       const result = await pool.query(
         "UPDATE subtipos SET categoria_id = $1, nombre = $2, descripcion = $3 WHERE id = $4 RETURNING *",
         [categoria_id, nombre, descripcion, id]
@@ -553,6 +635,17 @@ app.get("/api/disciplinas/area/:areaId", async (req, res) => {
         [id]
       );
       res.json({ message: "Subtipo eliminado lógicamente" });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.patch("/api/subtipos/:id/estado", async (req, res) => {
+    const { id } = req.params;
+    const { estado_activo } = req.body;
+    try {
+      await pool.query("UPDATE subtipos SET estado_activo = $1 WHERE id = $2", [estado_activo, id]);
+      res.json({ message: "Estado actualizado correctamente" });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

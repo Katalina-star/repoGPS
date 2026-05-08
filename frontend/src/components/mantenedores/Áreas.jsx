@@ -15,11 +15,15 @@ const AreasPanel = () => {
   const [formData, setFormData] = useState({ nombre: '', contratista_id: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda] = useState('')
+  const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => {
     Promise.all([cargarAreas(), cargarContratistas()])
   }, [cargarAreas, cargarContratistas])
+
+  useEffect(() => {
+    setBusqueda('')
+  }, [tabActiva])
 
   const limpiarFormulario = () => {
     setFormData({ nombre: '', contratista_id: '' })
@@ -44,6 +48,15 @@ const AreasPanel = () => {
   const handleEditar = (a) => {
     setFormData({ nombre: a.nombre, contratista_id: String(a.contratista_id) })
     setEditandoId(a.id)
+  }
+
+  const handleCambiarEstado = async (id, nuevoEstado) => {
+    try {
+      await cambiarEstado(id, nuevoEstado)
+      cargarAreas()
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   const filtrarData = (lista) => {
@@ -98,6 +111,18 @@ const AreasPanel = () => {
             <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
             <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
           </div>
+          <div className="table-controls">
+            <div className="search-wrapper">
+              <span className="search-icon">🔍</span>
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder="Buscar..." 
+                value={busqueda} 
+                onChange={e => setBusqueda(e.target.value)} 
+              />
+            </div>
+          </div>
         </div>
         <div className="table-wrap">
           <table className="users-table">
@@ -115,7 +140,7 @@ const AreasPanel = () => {
                   <td>{a.contratista_nombre || 'No asignada'}</td>
                   <td>
                     <button className="btn-mini btn-edit" onClick={() => handleEditar(a)}>Editar</button>
-                    <button className="btn-mini btn-danger" onClick={() => cambiarEstado(a.id, !a.estado_activo)}>{a.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                    <button className="btn-mini btn-danger" onClick={() => handleCambiarEstado(a.id, !a.estado_activo)}>{a.estado_activo ? 'Borrar' : 'Reactivar'}</button>
                   </td>
                 </tr>
               ))}

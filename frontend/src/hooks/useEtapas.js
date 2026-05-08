@@ -5,13 +5,14 @@ export const useEtapas = () => {
   const [etapas, setEtapas] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const { get, post, put, patch } = useApi()
+  const { get, post, put, patch, del } = useApi()
 
   const cargarEtapas = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await get('/api/etapas-proceso')
+      // Trae todas las etapas (activas e inactivas) para filtrar localmente
+      const data = await get('/api/etapas-proceso?incluir_inactivos=true')
       if (Array.isArray(data)) {
         setEtapas(data)
       }
@@ -51,6 +52,12 @@ export const useEtapas = () => {
     return data
   }, [patch])
 
+  // Eliminar usa DELETE
+  const eliminar = useCallback(async (id) => {
+    const data = await del(`/api/etapas-proceso/${id}`)
+    return data
+  }, [del])
+
   return {
     etapas,
     loading,
@@ -58,6 +65,7 @@ export const useEtapas = () => {
     cargarEtapas,
     crearEtapa,
     actualizarEtapa,
-    cambiarEstado
+    cambiarEstado,
+    eliminar
   }
 }
