@@ -3,12 +3,10 @@ import { useExpedientes } from '../../hooks/useExpedientes'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useDisciplinas } from '../../hooks/useDisciplinas'
 import { useApi } from '../../hooks/useApi'
-import { useAuth } from '../../context/useAuth'
 import { useContratistas } from '../../hooks/useContratistas'
 import ExpedienteDetalle from './ExpedienteDetalle'
 
-const ExpedientesPanel = () => {
-  const { user } = useAuth()
+const ExpedientesPanel = ({ user }) => {
   const { get } = useApi()
   const {
     expedientes,

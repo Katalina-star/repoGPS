@@ -1,9 +1,7 @@
 import { useEffect } from 'react'
-import { useAuth } from '../../context/useAuth'
 import { useExpedientes } from '../../hooks/useExpedientes'
 
-const Dashboard = ({ esAdmin = true }) => {
-  const { user } = useAuth()
+const Dashboard = ({ user, esAdmin = true }) => {
   const { expedientes, cargarExpedientes } = useExpedientes()
 
   useEffect(() => {

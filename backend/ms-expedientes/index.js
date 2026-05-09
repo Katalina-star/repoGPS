@@ -1,10 +1,37 @@
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// JWT Configuration (debe coincidir con ms-usuarios)
+const JWT_SECRET = process.env.JWT_SECRET || "repoGPS_jwt_secret_key_2026";
+const ADMIN_ROL_ID = 1;
+
+// Middleware de autenticación JWT
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Token requerido" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = {
+      id: decoded.id,
+      rol_id: decoded.rol_id,
+      area_id: decoded.area_id,
+      esAdmin: decoded.rol_id === ADMIN_ROL_ID
+    };
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Token inválido o expirado" });
+  }
+}
 
 // Compatibilidad de esquema: algunas BD antiguas usan etapa_proceso_id
 let TAREAS_ETAPA_COLUMN = null;
@@ -452,19 +479,32 @@ app.patch("/api/etapas-proceso/:id/estado", async (req, res) => {
 // EXPEDIENTES
 // ============================================
 
-app.get("/api/expedientes", async (req, res) => {
+// GET /api/expedientes - Lista expedientes filtrados por área del usuario
+app.get("/api/expedientes", authMiddleware, async (req, res) => {
+  const { esAdmin, area_id } = req.user;
+
   try {
-    const result = await pool.query(`
-      SELECT e.*, p.nombre AS proceso_nombre, ep.nombre AS etapa_actual, ep.es_final
+    let query = `
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final
       FROM expedientes e
       LEFT JOIN procesos p ON e.proceso_id = p.id
       LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
       WHERE e.estado_activo = true
-      ORDER BY e.fecha_creacion DESC
-    `);
-    
+    `;
+    const params = [];
+
+    // Si no es admin, filtrar por área del usuario
+    if (!esAdmin && area_id) {
+      params.push(area_id);
+      query += ` AND p.area_id = $${params.length}`;
+    }
+
+    query += " ORDER BY e.fecha_creacion DESC";
+
+    const result = await pool.query(query, params);
+
     // Agregar campo de estado basado en la etapa
-    const ExpedientesConEstado = result.rows.map(exp => {
+    const expedientesConEstado = result.rows.map(exp => {
       let estado = 'Pendiente';
       if (exp.etapa_actual_id) {
         if (exp.es_final) {
@@ -475,17 +515,34 @@ app.get("/api/expedientes", async (req, res) => {
       }
       return { ...exp, estado };
     });
-    
-    res.json(ExpedientesConEstado);
+
+    res.json(expedientesConEstado);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/expedientes/:id", async (req, res) => {
+app.get("/api/expedientes/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
+  const { esAdmin, area_id } = req.user;
+
   try {
-    const result = await pool.query("SELECT * FROM expedientes WHERE id = $1", [id]);
+    let query = `
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual
+      FROM expedientes e
+      LEFT JOIN procesos p ON e.proceso_id = p.id
+      LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
+      WHERE e.id = $1
+    `;
+    const params = [id];
+
+    // Si no es admin, verificar que el expediente sea de su área
+    if (!esAdmin && area_id) {
+      query += ` AND p.area_id = $2`;
+      params.push(area_id);
+    }
+
+    const result = await pool.query(query, params);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Expediente no encontrado" });
     }
@@ -538,22 +595,34 @@ app.put("/api/expedientes/:id", async (req, res) => {
 
 // Avanzar expediente a siguiente etapa
 // Al avanzar, genera tareas automaticamente para usuarios con el rol correspondiente
-app.post("/api/expedientes/:id/avanzar", async (req, res) => {
+// POST /api/expedientes/:id/avanzar - Avanzar expediente a siguiente etapa
+app.post("/api/expedientes/:id/avanzar", authMiddleware, async (req, res) => {
   const { id } = req.params;
-  const { usuario_id, observacion, rol_id } = req.body;
+  const { observacion } = req.body;
+  const { id: usuario_id, rol_id, esAdmin, area_id } = req.user;
 
-  if (!usuario_id) {
-    return res.status(400).json({ error: "usuario_id es requerido" });
-  }
-
-  // HU-02: Colaborador no puede avanzar expediente
-  // Rol 4 = Colaborador (init.sql)
+  // HU-02: Colaborador no puede avanzar expediente (rol 4)
   if (Number(rol_id) === 4) {
     return res.status(403).json({ error: "Colaborador no puede avanzar expedientes" });
   }
+
   try {
-    // Obtener expediente actual
-    const expResult = await pool.query("SELECT * FROM expedientes WHERE id = $1", [id]);
+    // Obtener expediente actual con JOIN a procesos para verificar área
+    let expQuery = `
+      SELECT e.*, p.area_id 
+      FROM expedientes e 
+      INNER JOIN procesos p ON e.proceso_id = p.id 
+      WHERE e.id = $1
+    `;
+    const expParams = [id];
+
+    // Si no es admin, verificar que el expediente sea de su área
+    if (!esAdmin && area_id) {
+      expQuery += ` AND p.area_id = $2`;
+      expParams.push(area_id);
+    }
+
+    const expResult = await pool.query(expQuery, expParams);
     if (expResult.rows.length === 0) {
       return res.status(404).json({ error: "Expediente no encontrado" });
     }
@@ -580,7 +649,7 @@ app.post("/api/expedientes/:id/avanzar", async (req, res) => {
     // Registrar en historial
     await pool.query(
       "INSERT INTO historial_etapas (expediente_id, etapa_anterior_id, etapa_nueva_id, usuario_id, observacion) VALUES ($1, $2, $3, $4, $5)",
-      [id, expediente.etapa_actual_id, nuevaEtapa.id, usuario_id, observacion || "Avance automatico"]
+      [id, expediente.etapa_actual_id, nuevaEtapa.id, usuario_id, observacion || "Avance automático"]
     );
 
     // Generar tareas automaticamente para la nueva etapa
@@ -594,22 +663,33 @@ app.post("/api/expedientes/:id/avanzar", async (req, res) => {
   }
 });
 
-// Devolver expediente a etapa anterior
-app.post("/api/expedientes/:id/devolver", async (req, res) => {
+// POST /api/expedientes/:id/devolver - Devolver expediente a etapa anterior
+app.post("/api/expedientes/:id/devolver", authMiddleware, async (req, res) => {
   const { id } = req.params;
-  const { usuario_id, observacion, rol_id } = req.body;
+  const { observacion } = req.body;
+  const { id: usuario_id, rol_id, esAdmin, area_id } = req.user;
 
-  if (!usuario_id) {
-    return res.status(400).json({ error: "usuario_id es requerido" });
-  }
-
-  // HU-02: Colaborador no puede devolver/rechazar expediente
-  // Rol 4 = Colaborador (init.sql)
+  // HU-02: Colaborador no puede devolver expediente (rol 4)
   if (Number(rol_id) === 4) {
     return res.status(403).json({ error: "Colaborador no puede devolver expedientes" });
   }
+
   try {
-    const expResult = await pool.query("SELECT * FROM expedientes WHERE id = $1", [id]);
+    // Obtener expediente actual verificando área
+    let expQuery = `
+      SELECT e.*, p.area_id 
+      FROM expedientes e 
+      INNER JOIN procesos p ON e.proceso_id = p.id 
+      WHERE e.id = $1
+    `;
+    const expParams = [id];
+
+    if (!esAdmin && area_id) {
+      expQuery += ` AND p.area_id = $2`;
+      expParams.push(area_id);
+    }
+
+    const expResult = await pool.query(expQuery, expParams);
     if (expResult.rows.length === 0) {
       return res.status(404).json({ error: "Expediente no encontrado" });
     }
@@ -709,9 +789,30 @@ app.delete("/api/documentos/:id", async (req, res) => {
 // HISTORIAL ETAPAS
 // ============================================
 
-app.get("/api/historial/expediente/:expedienteId", async (req, res) => {
+app.get("/api/historial/expediente/:expedienteId", authMiddleware, async (req, res) => {
   const { expedienteId } = req.params;
+  const { esAdmin, area_id } = req.user;
+
   try {
+    // Verificar acceso al expediente
+    let checkQuery = `
+      SELECT e.id, p.area_id 
+      FROM expedientes e 
+      INNER JOIN procesos p ON e.proceso_id = p.id 
+      WHERE e.id = $1
+    `;
+    const checkParams = [expedienteId];
+
+    if (!esAdmin && area_id) {
+      checkQuery += ` AND p.area_id = $2`;
+      checkParams.push(area_id);
+    }
+
+    const checkResult = await pool.query(checkQuery, checkParams);
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Expediente no encontrado" });
+    }
+
     const result = await pool.query(`
       SELECT h.*, 
              ea.nombre AS etapa_anterior_nombre, 
