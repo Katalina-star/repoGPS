@@ -21,9 +21,7 @@ const AreasPanel = () => {
     Promise.all([cargarAreas(), cargarContratistas()])
   }, [cargarAreas, cargarContratistas])
 
-  useEffect(() => {
-    setBusqueda('')
-  }, [tabActiva])
+  const limpiarBusqueda = () => setBusqueda('')
 
   const limpiarFormulario = () => {
     setFormData({ nombre: '', contratista_id: '' })
@@ -108,8 +106,8 @@ const AreasPanel = () => {
       <section className="panel">
         <div className="panel-top table-top">
           <div className="tabs">
-            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
-            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
+            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => { setTabActiva('activos'); limpiarBusqueda(); }}>Activos</button>
+            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => { setTabActiva('inactivos'); limpiarBusqueda(); }}>Inactivos</button>
           </div>
           <div className="table-controls">
             <div className="search-wrapper">

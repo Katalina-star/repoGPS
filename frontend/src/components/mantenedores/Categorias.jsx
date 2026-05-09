@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useCategorias } from '../../hooks/useCategorias'
 
 const CategoriasPanel = () => {
@@ -41,11 +41,10 @@ const CategoriasPanel = () => {
     }
   }, [categoriaSeleccionada, cargarSubtipos])
 
-  // Limpiar búsquedas al cambiar de tab
-  useEffect(() => {
+  const limpiarBusqueda = () => {
     setBusquedaCategoria('')
     setBusquedaSubtipo('')
-  }, [tabCategorias, tabSubtipos])
+  }
 
   // ============================================
   // HANDLERS CATEGORÍAS
@@ -209,13 +208,13 @@ const CategoriasPanel = () => {
           <div className="tabs">
             <button 
               className={`tab-btn ${tabCategorias === 'activos' ? 'active' : ''}`} 
-              onClick={() => setTabCategorias('activos')}
+              onClick={() => { setTabCategorias('activos'); limpiarBusqueda(); }}
             >
               Activos
             </button>
             <button 
               className={`tab-btn ${tabCategorias === 'inactivos' ? 'active' : ''}`} 
-              onClick={() => setTabCategorias('inactivos')}
+              onClick={() => { setTabCategorias('inactivos'); limpiarBusqueda(); }}
             >
               Inactivos
             </button>
@@ -327,13 +326,13 @@ const CategoriasPanel = () => {
               <div className="tabs">
                 <button 
                   className={`tab-btn ${tabSubtipos === 'activos' ? 'active' : ''}`} 
-                  onClick={() => setTabSubtipos('activos')}
+                  onClick={() => { setTabSubtipos('activos'); limpiarBusqueda(); }}
                 >
                   Activos
                 </button>
                 <button 
                   className={`tab-btn ${tabSubtipos === 'inactivos' ? 'active' : ''}`} 
-                  onClick={() => setTabSubtipos('inactivos')}
+                  onClick={() => { setTabSubtipos('inactivos'); limpiarBusqueda(); }}
                 >
                   Inactivos
                 </button>

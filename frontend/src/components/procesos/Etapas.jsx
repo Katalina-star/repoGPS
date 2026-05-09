@@ -24,9 +24,7 @@ const EtapasPanel = () => {
     Promise.all([cargarEtapas(), cargarProcesos(), cargarRoles()])
   }, [cargarEtapas, cargarProcesos, cargarRoles])
 
-  useEffect(() => {
-    setBusqueda('')
-  }, [tabActiva])
+  const limpiarBusqueda = () => setBusqueda('')
 
   const limpiarFormulario = () => {
     setFormData({
@@ -69,15 +67,6 @@ const EtapasPanel = () => {
       rol_id: String(e.rol_id || '')
     })
     setEditandoId(e.id)
-  }
-
-  const handleCambiarEstado = async (id, nuevoEstado) => {
-    try {
-      await cambiarEstado(id, nuevoEstado)
-      cargarEtapas()
-    } catch (err) {
-      alert(err.message)
-    }
   }
 
   // Eliminar usa DELETE
@@ -176,8 +165,8 @@ const EtapasPanel = () => {
       <section className="panel">
         <div className="panel-top table-top">
           <div className="tabs">
-            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
-            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
+            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => { setTabActiva('activos'); limpiarBusqueda(); }}>Activos</button>
+            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => { setTabActiva('inactivos'); limpiarBusqueda(); }}>Inactivos</button>
           </div>
           <div className="table-controls">
             <div className="search-wrapper">

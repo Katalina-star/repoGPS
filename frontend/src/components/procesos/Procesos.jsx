@@ -15,9 +15,7 @@ const ProcesosPanel = () => {
     Promise.all([cargarProcesos(), cargarAreas()])
   }, [cargarProcesos, cargarAreas])
 
-  useEffect(() => {
-    setBusqueda('')
-  }, [tabActiva])
+  const limpiarBusqueda = () => setBusqueda('')
 
   const limpiarFormulario = () => {
     setFormData({ area_id: '', nombre: '', descripcion: '' })
@@ -42,15 +40,6 @@ const ProcesosPanel = () => {
   const handleEditar = (p) => {
     setFormData({ area_id: String(p.area_id), nombre: p.nombre, descripcion: p.descripcion || '' })
     setEditandoId(p.id)
-  }
-
-  const handleCambiarEstado = async (id, nuevoEstado) => {
-    try {
-      await cambiarEstado(id, nuevoEstado)
-      cargarProcesos()
-    } catch (err) {
-      alert(err.message)
-    }
   }
 
   // Eliminar usa DELETE que tiene validación de dependencias
@@ -131,8 +120,8 @@ const ProcesosPanel = () => {
       <section className="panel">
         <div className="panel-top table-top">
           <div className="tabs">
-            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
-            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
+            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => { setTabActiva('activos'); limpiarBusqueda(); }}>Activos</button>
+            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => { setTabActiva('inactivos'); limpiarBusqueda(); }}>Inactivos</button>
           </div>
           <div className="table-controls">
             <div className="search-wrapper">

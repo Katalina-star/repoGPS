@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useContratistas } from '../../hooks/useContratistas'
 
 const ContratistasPanel = () => {
@@ -21,9 +21,7 @@ const ContratistasPanel = () => {
   }, [cargarContratistas])
 
   // Limpiar búsqueda al cambiar de tab para mejor UX
-  useEffect(() => {
-    setBusqueda('')
-  }, [tabActiva])
+  const limpiarBusqueda = () => setBusqueda('')
 
   const limpiarFormulario = () => {
     setFormData({ razon_social: '', rut: '' })
@@ -112,8 +110,8 @@ const ContratistasPanel = () => {
       <section className="panel">
         <div className="panel-top table-top">
           <div className="tabs">
-            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
-            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
+            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => { setTabActiva('activos'); limpiarBusqueda(); }}>Activos</button>
+            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => { setTabActiva('inactivos'); limpiarBusqueda(); }}>Inactivos</button>
           </div>
           <div className="table-controls">
             <div className="search-wrapper">
