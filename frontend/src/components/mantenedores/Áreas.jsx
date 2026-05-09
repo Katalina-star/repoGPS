@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAreas } from '../../hooks/useAreas'
+import { useUsuarios } from '../../hooks/useUsuarios'
 
 const AreasPanel = () => {
   const {
@@ -12,14 +13,26 @@ const AreasPanel = () => {
     cambiarEstado
   } = useAreas()
 
+  const {
+    usuarios,
+    usuariosSinArea,
+    cargarUsuarios,
+    asignarArea
+  } = useUsuarios()
+
   const [formData, setFormData] = useState({ nombre: '', contratista_id: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
   const [busqueda, setBusqueda] = useState('')
 
+  // Panel de usuarios por área
+  const [areaSeleccionada, setAreaSeleccionada] = useState(null)
+  const [tabUsuarios, setTabUsuarios] = useState('asignados')
+  const [busquedaUsuario, setBusquedaUsuario] = useState('')
+
   useEffect(() => {
-    Promise.all([cargarAreas(), cargarContratistas()])
-  }, [cargarAreas, cargarContratistas])
+    Promise.all([cargarAreas(), cargarContratistas(), cargarUsuarios()])
+  }, [cargarAreas, cargarContratistas, cargarUsuarios])
 
   const limpiarBusqueda = () => setBusqueda('')
 
@@ -62,12 +75,50 @@ const AreasPanel = () => {
       .filter(item => tabActiva === 'activos' ? item.estado_activo : !item.estado_activo)
       .filter(item => {
         const s = busqueda.toLowerCase()
-        return item.nombre?.toLowerCase().includes(s) || 
+        return item.nombre?.toLowerCase().includes(s) ||
                item.contratista_nombre?.toLowerCase().includes(s)
       })
   }
 
   const getTitulo = () => editandoId ? 'Modificar' : 'Registrar'
+
+  // ============================================
+  // HANDLERS USUARIOS (HU-20)
+  // ============================================
+
+  const usuariosEnArea = () => {
+    return usuarios.filter(u => u.area_id === areaSeleccionada && u.estado_activo)
+  }
+
+  const usuariosFiltrados = () => {
+    let lista = tabUsuarios === 'asignados' ? usuariosEnArea() : usuariosSinArea
+    if (!busquedaUsuario) return lista
+    const s = busquedaUsuario.toLowerCase()
+    return lista.filter(u =>
+      u.nombre_completo?.toLowerCase().includes(s) ||
+      u.correo?.toLowerCase().includes(s)
+    )
+  }
+
+  const handleAsignarUsuario = async (usuarioId, areaId) => {
+    try {
+      await asignarArea(usuarioId, areaId)
+      await cargarUsuarios()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const handleDesasignarUsuario = async (usuarioId) => {
+    try {
+      await asignarArea(usuarioId, null)
+      await cargarUsuarios()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const limpiarBusquedaUsuarios = () => setBusquedaUsuario('')
 
   return (
     <>
@@ -112,12 +163,12 @@ const AreasPanel = () => {
           <div className="table-controls">
             <div className="search-wrapper">
               <span className="search-icon">🔍</span>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="search-input"
-                placeholder="Buscar..." 
-                value={busqueda} 
-                onChange={e => setBusqueda(e.target.value)} 
+                placeholder="Buscar..."
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
               />
             </div>
           </div>
@@ -133,12 +184,17 @@ const AreasPanel = () => {
             </thead>
             <tbody>
               {filtrarData(areas).map(a => (
-                <tr key={a.id}>
+                <tr
+                  key={a.id}
+                  className={areaSeleccionada === a.id ? 'selected-row' : ''}
+                  onClick={() => setAreaSeleccionada(areaSeleccionada === a.id ? null : a.id)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <td>{a.nombre}</td>
                   <td>{a.contratista_nombre || 'No asignada'}</td>
                   <td>
-                    <button className="btn-mini btn-edit" onClick={() => handleEditar(a)}>Editar</button>
-                    <button className="btn-mini btn-danger" onClick={() => handleCambiarEstado(a.id, !a.estado_activo)}>{a.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                    <button className="btn-mini btn-edit" onClick={(e) => { e.stopPropagation(); handleEditar(a); }}>Editar</button>
+                    <button className="btn-mini btn-danger" onClick={(e) => { e.stopPropagation(); handleCambiarEstado(a.id, !a.estado_activo); }}>{a.estado_activo ? 'Borrar' : 'Reactivar'}</button>
                   </td>
                 </tr>
               ))}
@@ -146,6 +202,109 @@ const AreasPanel = () => {
           </table>
         </div>
       </section>
+
+      {/* Panel de Usuarios - Solo visible cuando hay un área seleccionada */}
+      {areaSeleccionada && (
+        <>
+          <section className="panel">
+            <div className="panel-top">
+              <h3>Asignar Usuarios</h3>
+              <span className="category-badge">
+                Área: {areas.find(a => a.id === areaSeleccionada)?.nombre}
+              </span>
+            </div>
+            <div className="table-controls" style={{ marginTop: '10px', marginBottom: '15px' }}>
+              <div className="search-wrapper">
+                <span className="search-icon">🔍</span>
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Buscar usuario..."
+                  value={busquedaUsuario}
+                  onChange={e => setBusquedaUsuario(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table className="users-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tabUsuarios === 'asignados' ? (
+                    usuariosFiltrados().length === 0 ? (
+                      <tr><td colSpan="4" className="empty-state">No hay usuarios asignados a esta área</td></tr>
+                    ) : (
+                      usuariosFiltrados().map(u => (
+                        <tr key={u.id}>
+                          <td>{u.nombre_completo}</td>
+                          <td>{u.correo}</td>
+                          <td><span className="role-tag">{u.rol_nombre}</span></td>
+                          <td>
+                            <button
+                              className="btn-mini btn-danger"
+                              onClick={() => handleDesasignarUsuario(u.id)}
+                            >
+                              Desasignar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )
+                  ) : (
+                    usuariosFiltrados().length === 0 ? (
+                      <tr><td colSpan="4" className="empty-state">No hay usuarios sin área disponible</td></tr>
+                    ) : (
+                      usuariosFiltrados().map(u => (
+                        <tr key={u.id}>
+                          <td>{u.nombre_completo}</td>
+                          <td>{u.correo}</td>
+                          <td><span className="role-tag">{u.rol_nombre}</span></td>
+                          <td>
+                            <button
+                              className="btn-mini btn-primary"
+                              onClick={() => handleAsignarUsuario(u.id, areaSeleccionada)}
+                            >
+                              Asignar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="tabs" style={{ marginTop: '15px' }}>
+              <button
+                className={`tab-btn ${tabUsuarios === 'asignados' ? 'active' : ''}`}
+                onClick={() => { setTabUsuarios('asignados'); limpiarBusquedaUsuarios(); }}
+              >
+                Asignados ({usuariosEnArea().length})
+              </button>
+              <button
+                className={`tab-btn ${tabUsuarios === 'disponibles' ? 'active' : ''}`}
+                onClick={() => { setTabUsuarios('disponibles'); limpiarBusquedaUsuarios(); }}
+              >
+                Disponibles ({usuariosSinArea.length})
+              </button>
+            </div>
+          </section>
+          <div style={{ textAlign: 'center', marginTop: '10px' }}>
+            <button
+              className="btn btn-outline"
+              onClick={() => { setAreaSeleccionada(null); setTabUsuarios('asignados'); setBusquedaUsuario(''); }}
+            >
+              Cerrar panel
+            </button>
+          </div>
+        </>
+      )}
     </>
   )
 }
