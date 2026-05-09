@@ -1,9 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useApi } from './useApi'
-import { useAuth } from '../context/useAuth'
 
 export const useExpedientes = () => {
-  const { user } = useAuth()
   const [expedientes, setExpedientes] = useState([])
   const [expedienteDetalle, setExpedienteDetalle] = useState(null)
   const [historial, setHistorial] = useState([])
@@ -11,7 +9,6 @@ export const useExpedientes = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { get, post } = useApi()
-  const user = JSON.parse(localStorage.getItem('user') || 'null')
 
   const cargarExpedientes = useCallback(async () => {
     setLoading(true)
@@ -59,28 +56,20 @@ export const useExpedientes = () => {
   }, [])
 
   const avanzarExpediente = useCallback(async (id, observacion) => {
-    const data = await post(`/api/expedientes/${id}/avanzar`, {
-      observacion,
-      usuario_id: user?.id,
-      rol_id: user?.rol_id
-    })
+    const data = await post(`/api/expedientes/${id}/avanzar`, { observacion })
     if (data) {
       await cargarExpedientes()
     }
     return data
-  }, [post, cargarExpedientes, user?.id, user?.rol_id])
+  }, [post, cargarExpedientes])
 
   const devolverExpediente = useCallback(async (id, observacion) => {
-    const data = await post(`/api/expedientes/${id}/devolver`, {
-      observacion,
-      usuario_id: user?.id,
-      rol_id: user?.rol_id
-    })
+    const data = await post(`/api/expedientes/${id}/devolver`, { observacion })
     if (data) {
       await cargarExpedientes()
     }
     return data
-  }, [post, cargarExpedientes, user?.id, user?.rol_id])
+  }, [post, cargarExpedientes])
 
   return {
     expedientes,

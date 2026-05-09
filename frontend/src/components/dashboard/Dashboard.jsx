@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '../../context/useAuth'
 import { useExpedientes } from '../../hooks/useExpedientes'
 import { useApi } from '../../hooks/useApi'
 
-const Dashboard = ({ esAdmin = true }) => {
-  const { user } = useAuth()
+const Dashboard = ({ user, esAdmin = true }) => {
   const { expedientes, cargarExpedientes } = useExpedientes()
   const { get } = useApi()
   const [etapasFinales, setEtapasFinales] = useState([])

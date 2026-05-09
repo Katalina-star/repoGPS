@@ -46,7 +46,7 @@ const AppContent = () => {
   const renderPanel = () => {
     switch (seccionActual) {
       case 'dashboard':
-        return <Dashboard esAdmin={esAdmin(user)} />
+        return <Dashboard user={user} esAdmin={esAdmin(user)} />
       case 'bandeja':
         return <BandejaTareas user={user} />
       case 'usuarios':
@@ -62,7 +62,7 @@ const AppContent = () => {
       case 'etapas':
         return <EtapasPanel busqueda={busqueda} />
       case 'expedientes':
-        return <ExpedientesPanel busqueda={busqueda} />
+        return <ExpedientesPanel user={user} busqueda={busqueda} />
       default:
         return <Dashboard esAdmin={esAdmin(user)} />
     }
