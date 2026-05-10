@@ -52,11 +52,6 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
     Promise.all([cargarExpedientes(), cargarProcesos(), cargarDisciplinas(), cargarContratistas()])
   }, [cargarExpedientes, cargarProcesos, cargarDisciplinas, cargarContratistas])
 
-  // Sincronizar filtros cuando cambian los valores iniciales desde fuera
-  useEffect(() => {
-    setFiltroEstado(filtroEstadoInicial)
-    setFiltroSla(filtroSlaInicial)
-  }, [filtroEstadoInicial, filtroSlaInicial])
 
   // Cargar áreas cuando se selecciona un contratista
   const cargarAreasPorContratista = useCallback(async (contratistaId) => {
