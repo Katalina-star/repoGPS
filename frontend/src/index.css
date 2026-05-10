@@ -216,6 +216,9 @@ input:focus, select:focus {
   padding: 24px;
   text-align: center;
   border-left: 4px solid;
+  border: none;
+  outline: none;
+  appearance: none;
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
@@ -229,6 +232,8 @@ input:focus, select:focus {
 .dashboard-card-inner {
   background: transparent;
   border: none;
+  outline: none;
+  appearance: none;
   width: 100%;
   cursor: pointer;
 }

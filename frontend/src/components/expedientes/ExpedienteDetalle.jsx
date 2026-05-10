@@ -48,6 +48,7 @@ const ExpedienteDetalle = ({
             <p><strong>Etapa Actual:</strong> <span className="role-tag">{expediente.etapa_actual}</span></p>
             <p><strong>Descripción:</strong> {expediente.descripcion || 'Sin descripción'}</p>
             <p><strong>Fecha Creación:</strong> {new Date(expediente.fecha_creacion).toLocaleString()}</p>
+            <p><strong>Fecha de término:</strong> {expediente.fecha_termino ? new Date(expediente.fecha_termino).toLocaleDateString() : '-'}</p>
           </div>
 
           <div className="exp-actions">
