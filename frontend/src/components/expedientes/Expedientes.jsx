@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useExpedientes } from '../../hooks/useExpedientes'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useDisciplinas } from '../../hooks/useDisciplinas'
@@ -34,7 +35,9 @@ const ExpedientesPanel = ({ user }) => {
     descripcion: ''
   })
   const [etapasProceso, setEtapasProceso] = useState([])
-  const [filtroEstado, setFiltroEstado] = useState('todos')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const estadoFromQuery = searchParams.get('estado') || 'todos'
+  const [filtroEstado, setFiltroEstado] = useState(estadoFromQuery)
   const [filtroProceso, setFiltroProceso] = useState('')
   const [busqueda, setBusqueda] = useState('')
 
@@ -50,6 +53,13 @@ const ExpedientesPanel = ({ user }) => {
   useEffect(() => {
     Promise.all([cargarExpedientes(), cargarProcesos(), cargarDisciplinas(), cargarContratistas()])
   }, [cargarExpedientes, cargarProcesos, cargarDisciplinas, cargarContratistas])
+
+  // Sincronizar filtro con query param si cambia desde navegación externa (ej. dashboard)
+  useEffect(() => {
+    const estadoQ = searchParams.get('estado') || 'todos'
+    setFiltroEstado(estadoQ)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString()])
 
   // Cargar áreas cuando se selecciona un contratista
   const cargarAreasPorContratista = useCallback(async (contratistaId) => {
@@ -183,13 +193,9 @@ const ExpedientesPanel = ({ user }) => {
 
     return filtered
       .filter(e => {
-        if (filtroEstado === 'en_proceso') {
-          return e.estado === 'En Revision'
-        }
-        if (filtroEstado === 'completados') {
-          return e.estado === 'Aprobado'
-        }
-        return true
+        if (!filtroEstado || filtroEstado === 'todos') return true
+        // filtroEstado holds backend estado values: 'Pendiente','En Revision','Aprobado'
+        return e.estado === filtroEstado
       })
       .filter(e => !filtroProceso || e.proceso_id === Number(filtroProceso))
       .filter(e => {
@@ -300,10 +306,21 @@ const ExpedientesPanel = ({ user }) => {
       <section className="panel">
         <div className="panel-top table-top">
           <div className="filter-group">
-            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+            <select value={filtroEstado} onChange={e => {
+              const v = e.target.value
+              setFiltroEstado(v)
+              // update query param to keep navigation/links in sync
+              if (v === 'todos') {
+                searchParams.delete('estado')
+                setSearchParams(searchParams)
+              } else {
+                setSearchParams({ estado: v })
+              }
+            }}>
               <option value="todos">Todos</option>
-              <option value="en_proceso">En Proceso</option>
-              <option value="completados">Completados</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Revision">En Revision</option>
+              <option value="Aprobado">Aprobado</option>
             </select>
             <select value={filtroProceso} onChange={e => setFiltroProceso(e.target.value)}>
               <option value="">Todos los Procesos</option>

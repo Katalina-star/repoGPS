@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useExpedientes } from '../../hooks/useExpedientes'
 
 const Dashboard = ({ user, esAdmin = true }) => {
@@ -8,6 +9,8 @@ const Dashboard = ({ user, esAdmin = true }) => {
     cargarExpedientes()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const navigate = useNavigate()
 
   const ahora = new Date()
 
@@ -44,6 +47,11 @@ const Dashboard = ({ user, esAdmin = true }) => {
     }
   })
 
+  const handleClick = (estado) => {
+    // Map estados internos to query param values
+    navigate(`/expedientes${estado ? `?estado=${encodeURIComponent(estado)}` : ''}`)
+  }
+
   return (
     <div className="dashboard">
       <h2 style={{ marginBottom: '24px', color: 'var(--text-main)' }}>
@@ -51,25 +59,33 @@ const Dashboard = ({ user, esAdmin = true }) => {
       </h2>
       
       <div className="dashboard-grid">
-        <div className="dashboard-card" style={{ borderLeftColor: '#64748b' }}>
+        <button type="button" className="dashboard-card" style={{ borderLeftColor: '#64748b' }} onClick={() => handleClick('')}>
           <div className="dashboard-value" style={{ color: '#64748b' }}>{stats.total}</div>
           <div className="dashboard-label">Total</div>
-        </div>
+        </button>
         <div className="dashboard-card" style={{ borderLeftColor: '#94a3b8' }}>
-          <div className="dashboard-value" style={{ color: '#94a3b8' }}>{stats.pendiente}</div>
-          <div className="dashboard-label">Pendiente</div>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('Pendiente')}>
+            <div className="dashboard-value" style={{ color: '#94a3b8' }}>{stats.pendiente}</div>
+            <div className="dashboard-label">Pendiente</div>
+          </button>
         </div>
         <div className="dashboard-card" style={{ borderLeftColor: '#3b82f6' }}>
-          <div className="dashboard-value" style={{ color: '#3b82f6' }}>{stats.enCurso}</div>
-          <div className="dashboard-label">En Curso</div>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('En Revision')}>
+            <div className="dashboard-value" style={{ color: '#3b82f6' }}>{stats.enCurso}</div>
+            <div className="dashboard-label">En Curso</div>
+          </button>
         </div>
         <div className="dashboard-card" style={{ borderLeftColor: '#ef4444' }}>
-          <div className="dashboard-value" style={{ color: '#ef4444' }}>{stats.atrasado}</div>
-          <div className="dashboard-label">Atrasado</div>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('En Revision')}>
+            <div className="dashboard-value" style={{ color: '#ef4444' }}>{stats.atrasado}</div>
+            <div className="dashboard-label">Atrasado</div>
+          </button>
         </div>
         <div className="dashboard-card" style={{ borderLeftColor: '#22c55e' }}>
-          <div className="dashboard-value" style={{ color: '#22c55e' }}>{stats.terminado}</div>
-          <div className="dashboard-label">Terminado</div>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('Aprobado')}>
+            <div className="dashboard-value" style={{ color: '#22c55e' }}>{stats.terminado}</div>
+            <div className="dashboard-label">Terminado</div>
+          </button>
         </div>
       </div>
     </div>
