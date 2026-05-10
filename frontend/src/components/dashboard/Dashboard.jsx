@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useExpedientes } from '../../hooks/useExpedientes'
 
-const Dashboard = ({ user, esAdmin = true, onSelectEstado }) => {
+const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
   const { expedientes, cargarExpedientes } = useExpedientes()
 
   useEffect(() => {
@@ -19,7 +19,7 @@ const Dashboard = ({ user, esAdmin = true, onSelectEstado }) => {
   const stats = {
     total: expedientesFiltrados.length,
     pendiente: 0,
-    enCurso: 0,
+    enPlazo: 0,
     atrasado: 0,
     terminado: 0
   }
@@ -36,7 +36,7 @@ const Dashboard = ({ user, esAdmin = true, onSelectEstado }) => {
       if (diasTranscurridos > 10) {
         stats.atrasado++
       } else {
-        stats.enCurso++
+        stats.enPlazo++
       }
     } else {
       // Pendiente o sin asignar
@@ -44,9 +44,11 @@ const Dashboard = ({ user, esAdmin = true, onSelectEstado }) => {
     }
   })
 
-  const handleClick = (estado) => {
-    if (onSelectEstado) onSelectEstado(estado)
+  const handleClick = (estado, sla = 'todos') => {
+    if (onSelectFiltro) onSelectFiltro({ estado, sla })
   }
+
+  const enRevisionTotal = stats.enPlazo + stats.atrasado
 
   return (
     <div className="dashboard">
@@ -63,14 +65,20 @@ const Dashboard = ({ user, esAdmin = true, onSelectEstado }) => {
           <div className="dashboard-value" style={{ color: '#94a3b8' }}>{stats.pendiente}</div>
           <div className="dashboard-label">Pendiente</div>
         </button>
-        <button type="button" className="dashboard-card" style={{ borderLeftColor: '#3b82f6' }} onClick={() => handleClick('En Revision')}>
-          <div className="dashboard-value" style={{ color: '#3b82f6' }}>{stats.enCurso}</div>
-          <div className="dashboard-label">En Curso</div>
-        </button>
-        <button type="button" className="dashboard-card" style={{ borderLeftColor: '#ef4444' }} onClick={() => handleClick('En Revision')}>
-          <div className="dashboard-value" style={{ color: '#ef4444' }}>{stats.atrasado}</div>
-          <div className="dashboard-label">Atrasado</div>
-        </button>
+        <div className="dashboard-card" style={{ borderLeftColor: '#3b82f6' }}>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('En Revision', 'todos')}>
+            <div className="dashboard-value" style={{ color: '#3b82f6' }}>{enRevisionTotal}</div>
+            <div className="dashboard-label">En Revisión</div>
+          </button>
+          <div className="dashboard-substats">
+            <button type="button" className="dashboard-chip chip-ok" onClick={() => handleClick('En Revision', 'en_plazo')}>
+              En plazo: {stats.enPlazo}
+            </button>
+            <button type="button" className="dashboard-chip chip-warn" onClick={() => handleClick('En Revision', 'atrasado')}>
+              Atrasado: {stats.atrasado}
+            </button>
+          </div>
+        </div>
         <button type="button" className="dashboard-card" style={{ borderLeftColor: '#22c55e' }} onClick={() => handleClick('Aprobado')}>
           <div className="dashboard-value" style={{ color: '#22c55e' }}>{stats.terminado}</div>
           <div className="dashboard-label">Terminado</div>

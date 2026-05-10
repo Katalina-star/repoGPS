@@ -37,6 +37,7 @@ const AppContent = () => {
   const { user, logout, loading } = useAuth()
   const [seccionActual, setSeccionActual] = useState('dashboard')
   const [filtroEstadoExpedientes, setFiltroEstadoExpedientes] = useState('todos')
+  const [filtroSlaExpedientes, setFiltroSlaExpedientes] = useState('todos')
 
   // Calcular menú según rol (sin useEffect)
   const menuItems = esAdmin(user) ? menuAdmin : menuNoAdmin
@@ -52,8 +53,9 @@ const AppContent = () => {
           <Dashboard
             user={user}
             esAdmin={esAdmin(user)}
-            onSelectEstado={(estado) => {
+            onSelectFiltro={({ estado, sla }) => {
               setFiltroEstadoExpedientes(estado || 'todos')
+              setFiltroSlaExpedientes(sla || 'todos')
               setSeccionActual('expedientes')
             }}
           />
@@ -75,7 +77,13 @@ const AppContent = () => {
       case 'etapas':
         return <EtapasPanel />
       case 'expedientes':
-        return <ExpedientesPanel user={user} filtroEstadoInicial={filtroEstadoExpedientes} />
+        return (
+          <ExpedientesPanel
+            user={user}
+            filtroEstadoInicial={filtroEstadoExpedientes}
+            filtroSlaInicial={filtroSlaExpedientes}
+          />
+        )
       default:
         return <Dashboard esAdmin={esAdmin(user)} />
     }
