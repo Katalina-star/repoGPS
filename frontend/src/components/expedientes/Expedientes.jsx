@@ -188,12 +188,12 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
     return filtered
       .filter(e => {
         if (!filtroEstado || filtroEstado === 'todos') return true
-        // filtroEstado holds backend estado values: 'Pendiente','En Revision','Aprobado'
+        // filtroEstado holds backend estado values: 'Pendiente','En Desarrollo','Terminado'
         return e.estado === filtroEstado
       })
       .filter(e => {
         if (!filtroSla || filtroSla === 'todos') return true
-        if (e.estado !== 'En Revision') return false
+        if (e.estado !== 'En Desarrollo') return false
         const ahora = Date.now()
         if (e.fecha_termino) {
           const fechaTermino = new Date(e.fecha_termino).getTime()
@@ -328,8 +328,8 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
             <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
               <option value="todos">Todos</option>
               <option value="Pendiente">Pendiente</option>
-              <option value="En Revision">En Revision</option>
-              <option value="Aprobado">Aprobado</option>
+              <option value="En Desarrollo">En Desarrollo</option>
+              <option value="Terminado">Terminado</option>
             </select>
             <select value={filtroSla} onChange={e => setFiltroSla(e.target.value)}>
               <option value="todos">Plazo: Todos</option>
@@ -374,7 +374,7 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
                   <td><span className="role-tag">{exp.estado}</span></td>
                   <td>{new Date(exp.fecha_creacion).toLocaleDateString()}</td>
                   <td>
-                    {exp.estado === 'En Revision' ? (
+                    {exp.estado === 'En Desarrollo' ? (
                       (() => {
                         const ahora = Date.now()
                         if (exp.fecha_termino) {

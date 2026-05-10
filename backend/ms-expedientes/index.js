@@ -487,7 +487,7 @@ app.get("/api/expedientes", authMiddleware, async (req, res) => {
 
   try {
     let query = `
-      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final, ep.tipo_etapa
       FROM expedientes e
       LEFT JOIN procesos p ON e.proceso_id = p.id
       LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
@@ -509,10 +509,12 @@ app.get("/api/expedientes", authMiddleware, async (req, res) => {
     const expedientesConEstado = result.rows.map(exp => {
       let estado = 'Pendiente';
       if (exp.etapa_actual_id) {
-        if (exp.es_final) {
-          estado = 'Aprobado';
-        } else {
-          estado = 'En Revision';
+        if (exp.tipo_etapa === 'final' || exp.es_final) {
+          estado = 'Terminado';
+        } else if (exp.tipo_etapa === 'desarrollo') {
+          estado = 'En Desarrollo';
+        } else if (exp.tipo_etapa === 'inicio') {
+          estado = 'Pendiente';
         }
       }
       return { ...exp, estado };
@@ -530,7 +532,7 @@ app.get("/api/expedientes/:id", authMiddleware, async (req, res) => {
 
   try {
     let query = `
-      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final, ep.tipo_etapa
       FROM expedientes e
       LEFT JOIN procesos p ON e.proceso_id = p.id
       LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
@@ -548,7 +550,18 @@ app.get("/api/expedientes/:id", authMiddleware, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Expediente no encontrado" });
     }
-    res.json(result.rows[0]);
+    const exp = result.rows[0];
+    let estado = 'Pendiente';
+    if (exp?.etapa_actual_id) {
+      if (exp.tipo_etapa === 'final' || exp.es_final) {
+        estado = 'Terminado';
+      } else if (exp.tipo_etapa === 'desarrollo') {
+        estado = 'En Desarrollo';
+      } else if (exp.tipo_etapa === 'inicio') {
+        estado = 'Pendiente';
+      }
+    }
+    res.json({ ...exp, estado });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -683,7 +696,7 @@ app.post("/api/expedientes/:id/avanzar", authMiddleware, async (req, res) => {
     }
 
     const updated = await pool.query(`
-      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final, ep.tipo_etapa
       FROM expedientes e
       LEFT JOIN procesos p ON e.proceso_id = p.id
       LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
@@ -693,7 +706,13 @@ app.post("/api/expedientes/:id/avanzar", authMiddleware, async (req, res) => {
     const exp = updated.rows[0];
     let estado = 'Pendiente';
     if (exp?.etapa_actual_id) {
-      estado = exp.es_final ? 'Aprobado' : 'En Revision';
+      if (exp.tipo_etapa === 'final' || exp.es_final) {
+        estado = 'Terminado';
+      } else if (exp.tipo_etapa === 'desarrollo') {
+        estado = 'En Desarrollo';
+      } else if (exp.tipo_etapa === 'inicio') {
+        estado = 'Pendiente';
+      }
     }
 
     res.json({ message: "Expediente avanzado", nueva_etapa: nuevaEtapa, expediente: { ...exp, estado } });
@@ -756,7 +775,7 @@ app.post("/api/expedientes/:id/devolver", authMiddleware, async (req, res) => {
     );
 
     const updated = await pool.query(`
-      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final, ep.tipo_etapa
       FROM expedientes e
       LEFT JOIN procesos p ON e.proceso_id = p.id
       LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
@@ -766,7 +785,13 @@ app.post("/api/expedientes/:id/devolver", authMiddleware, async (req, res) => {
     const exp = updated.rows[0];
     let estado = 'Pendiente';
     if (exp?.etapa_actual_id) {
-      estado = exp.es_final ? 'Aprobado' : 'En Revision';
+      if (exp.tipo_etapa === 'final' || exp.es_final) {
+        estado = 'Terminado';
+      } else if (exp.tipo_etapa === 'desarrollo') {
+        estado = 'En Desarrollo';
+      } else if (exp.tipo_etapa === 'inicio') {
+        estado = 'Pendiente';
+      }
     }
 
     res.json({ message: "Expediente devuelto", etapa_anterior: etapaAnterior, expediente: { ...exp, estado } });
