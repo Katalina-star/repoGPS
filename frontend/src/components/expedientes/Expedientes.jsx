@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { useExpedientes } from '../../hooks/useExpedientes'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useDisciplinas } from '../../hooks/useDisciplinas'
@@ -7,7 +6,7 @@ import { useApi } from '../../hooks/useApi'
 import { useContratistas } from '../../hooks/useContratistas'
 import ExpedienteDetalle from './ExpedienteDetalle'
 
-const ExpedientesPanel = ({ user }) => {
+const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos' }) => {
   const { get } = useApi()
   const {
     expedientes,
@@ -35,9 +34,7 @@ const ExpedientesPanel = ({ user }) => {
     descripcion: ''
   })
   const [etapasProceso, setEtapasProceso] = useState([])
-  const [searchParams, setSearchParams] = useSearchParams()
-  const estadoFromQuery = searchParams.get('estado') || 'todos'
-  const [filtroEstado, setFiltroEstado] = useState(estadoFromQuery)
+  const [filtroEstado, setFiltroEstado] = useState(filtroEstadoInicial)
   const [filtroProceso, setFiltroProceso] = useState('')
   const [busqueda, setBusqueda] = useState('')
 
@@ -54,12 +51,10 @@ const ExpedientesPanel = ({ user }) => {
     Promise.all([cargarExpedientes(), cargarProcesos(), cargarDisciplinas(), cargarContratistas()])
   }, [cargarExpedientes, cargarProcesos, cargarDisciplinas, cargarContratistas])
 
-  // Sincronizar filtro con query param si cambia desde navegación externa (ej. dashboard)
+  // Sincronizar filtro cuando cambia el valor inicial desde fuera
   useEffect(() => {
-    const estadoQ = searchParams.get('estado') || 'todos'
-    setFiltroEstado(estadoQ)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString()])
+    setFiltroEstado(filtroEstadoInicial)
+  }, [filtroEstadoInicial])
 
   // Cargar áreas cuando se selecciona un contratista
   const cargarAreasPorContratista = useCallback(async (contratistaId) => {
@@ -306,17 +301,7 @@ const ExpedientesPanel = ({ user }) => {
       <section className="panel">
         <div className="panel-top table-top">
           <div className="filter-group">
-            <select value={filtroEstado} onChange={e => {
-              const v = e.target.value
-              setFiltroEstado(v)
-              // update query param to keep navigation/links in sync
-              if (v === 'todos') {
-                searchParams.delete('estado')
-                setSearchParams(searchParams)
-              } else {
-                setSearchParams({ estado: v })
-              }
-            }}>
+            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
               <option value="todos">Todos</option>
               <option value="Pendiente">Pendiente</option>
               <option value="En Revision">En Revision</option>
