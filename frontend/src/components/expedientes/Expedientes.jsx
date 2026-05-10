@@ -6,7 +6,7 @@ import { useApi } from '../../hooks/useApi'
 import { useContratistas } from '../../hooks/useContratistas'
 import ExpedienteDetalle from './ExpedienteDetalle'
 
-const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos' }) => {
+const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicial = 'todos' }) => {
   const { get } = useApi()
   const {
     expedientes,
@@ -35,6 +35,7 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos' }) => {
   })
   const [etapasProceso, setEtapasProceso] = useState([])
   const [filtroEstado, setFiltroEstado] = useState(filtroEstadoInicial)
+  const [filtroSla, setFiltroSla] = useState(filtroSlaInicial)
   const [filtroProceso, setFiltroProceso] = useState('')
   const [busqueda, setBusqueda] = useState('')
 
@@ -51,10 +52,11 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos' }) => {
     Promise.all([cargarExpedientes(), cargarProcesos(), cargarDisciplinas(), cargarContratistas()])
   }, [cargarExpedientes, cargarProcesos, cargarDisciplinas, cargarContratistas])
 
-  // Sincronizar filtro cuando cambia el valor inicial desde fuera
+  // Sincronizar filtros cuando cambian los valores iniciales desde fuera
   useEffect(() => {
     setFiltroEstado(filtroEstadoInicial)
-  }, [filtroEstadoInicial])
+    setFiltroSla(filtroSlaInicial)
+  }, [filtroEstadoInicial, filtroSlaInicial])
 
   // Cargar áreas cuando se selecciona un contratista
   const cargarAreasPorContratista = useCallback(async (contratistaId) => {
@@ -192,6 +194,15 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos' }) => {
         // filtroEstado holds backend estado values: 'Pendiente','En Revision','Aprobado'
         return e.estado === filtroEstado
       })
+      .filter(e => {
+        if (!filtroSla || filtroSla === 'todos') return true
+        if (e.estado !== 'En Revision') return false
+        const fechaExp = e.fecha_actualizacion || e.fecha_creacion
+        const diasTranscurridos = Math.floor((Date.now() - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
+        if (filtroSla === 'atrasado') return diasTranscurridos > 10
+        if (filtroSla === 'en_plazo') return diasTranscurridos <= 10
+        return true
+      })
       .filter(e => !filtroProceso || e.proceso_id === Number(filtroProceso))
       .filter(e => {
         const s = busqueda.toLowerCase()
@@ -307,6 +318,11 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos' }) => {
               <option value="En Revision">En Revision</option>
               <option value="Aprobado">Aprobado</option>
             </select>
+            <select value={filtroSla} onChange={e => setFiltroSla(e.target.value)}>
+              <option value="todos">SLA: Todos</option>
+              <option value="en_plazo">SLA: En plazo</option>
+              <option value="atrasado">SLA: Atrasado</option>
+            </select>
             <select value={filtroProceso} onChange={e => setFiltroProceso(e.target.value)}>
               <option value="">Todos los Procesos</option>
               {procesos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -333,6 +349,7 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos' }) => {
                 <th>Proceso</th>
                 <th>Etapa Actual</th>
                 <th>Fecha Creación</th>
+                <th>SLA</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -343,6 +360,22 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos' }) => {
                   <td>{exp.proceso_nombre || '-'}</td>
                   <td><span className="role-tag">{exp.estado}</span></td>
                   <td>{new Date(exp.fecha_creacion).toLocaleDateString()}</td>
+                  <td>
+                    {exp.estado === 'En Revision' ? (
+                      (() => {
+                        const fechaExp = exp.fecha_actualizacion || exp.fecha_creacion
+                        const diasTranscurridos = Math.floor((Date.now() - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
+                        const enPlazo = diasTranscurridos <= 10
+                        return (
+                          <span className={`sla-tag ${enPlazo ? 'sla-ok' : 'sla-warn'}`}>
+                            {enPlazo ? 'En plazo' : 'Atrasado'}
+                          </span>
+                        )
+                      })()
+                    ) : (
+                      <span className="sla-tag sla-neutral">-</span>
+                    )}
+                  </td>
                   <td>
                     <button className="btn-mini btn-edit" onClick={() => abrirDetalle(exp)}>Ver Detalle</button>
                   </td>

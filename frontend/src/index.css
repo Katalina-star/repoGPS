@@ -218,11 +218,71 @@ input:focus, select:focus {
   border-left: 4px solid;
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
 }
 
 .dashboard-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+
+.dashboard-card-inner {
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.dashboard-substats {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboard-chip {
+  border: 1px solid transparent;
+  background: #f1f5f9;
+  color: var(--text-main);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-chip.chip-ok {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+.dashboard-chip.chip-warn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.sla-tag {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.sla-ok {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+.sla-warn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.sla-neutral {
+  background: #f1f5f9;
+  color: var(--text-muted);
 }
 
 .dashboard-icon {
