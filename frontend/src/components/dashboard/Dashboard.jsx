@@ -24,14 +24,14 @@ const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
     terminado: 0
   }
 
-  // Usar el campo 'estado' del backend: Pendiente, En Revision, Aprobado
+  // Usar el campo 'estado' del backend: Pendiente, En Desarrollo, Terminado
   expedientesFiltrados.forEach(exp => {
     const fechaExp = exp.fecha_actualizacion || exp.fecha_creacion
     const diasTranscurridos = Math.floor((ahora - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
     
-    if (exp.estado === 'Aprobado') {
+    if (exp.estado === 'Terminado') {
       stats.terminado++
-    } else if (exp.estado === 'En Revision') {
+    } else if (exp.estado === 'En Desarrollo') {
       // Atrasado: más de 10 días en revisión
       if (diasTranscurridos > 10) {
         stats.atrasado++
@@ -66,20 +66,20 @@ const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
           <div className="dashboard-label">Pendiente</div>
         </button>
         <div className="dashboard-card" style={{ borderLeftColor: '#3b82f6' }}>
-          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('En Revision', 'todos')}>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('En Desarrollo', 'todos')}>
             <div className="dashboard-value" style={{ color: '#3b82f6' }}>{enRevisionTotal}</div>
-            <div className="dashboard-label">En Revisión</div>
-          </button>
+          <div className="dashboard-label">En Desarrollo</div>
+        </button>
           <div className="dashboard-substats">
-            <button type="button" className="dashboard-chip chip-ok" onClick={() => handleClick('En Revision', 'en_plazo')}>
+            <button type="button" className="dashboard-chip chip-ok" onClick={() => handleClick('En Desarrollo', 'en_plazo')}>
               En plazo: {stats.enPlazo}
             </button>
-            <button type="button" className="dashboard-chip chip-warn" onClick={() => handleClick('En Revision', 'atrasado')}>
+            <button type="button" className="dashboard-chip chip-warn" onClick={() => handleClick('En Desarrollo', 'atrasado')}>
               Atrasado: {stats.atrasado}
             </button>
           </div>
         </div>
-        <button type="button" className="dashboard-card" style={{ borderLeftColor: '#22c55e' }} onClick={() => handleClick('Aprobado')}>
+        <button type="button" className="dashboard-card" style={{ borderLeftColor: '#22c55e' }} onClick={() => handleClick('Terminado')}>
           <div className="dashboard-value" style={{ color: '#22c55e' }}>{stats.terminado}</div>
           <div className="dashboard-label">Terminado</div>
         </button>
