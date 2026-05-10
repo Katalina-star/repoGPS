@@ -331,9 +331,9 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
               <option value="Aprobado">Aprobado</option>
             </select>
             <select value={filtroSla} onChange={e => setFiltroSla(e.target.value)}>
-              <option value="todos">SLA: Todos</option>
-              <option value="en_plazo">SLA: En plazo</option>
-              <option value="atrasado">SLA: Atrasado</option>
+              <option value="todos">Plazo: Todos</option>
+              <option value="en_plazo">Plazo: En plazo</option>
+              <option value="atrasado">Plazo: Atrasado</option>
             </select>
             <select value={filtroProceso} onChange={e => setFiltroProceso(e.target.value)}>
               <option value="">Todos los Procesos</option>
@@ -361,7 +361,7 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
                 <th>Proceso</th>
                 <th>Etapa Actual</th>
                 <th>Fecha Creación</th>
-                <th>SLA</th>
+                <th>Plazo</th>
                 <th>Acciones</th>
               </tr>
             </thead>
