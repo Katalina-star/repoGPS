@@ -13,12 +13,15 @@ const ContratistasPanel = () => {
   const [formData, setFormData] = useState({ razon_social: '', rut: '' })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
-  const [busqueda] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [errorRut, setErrorRut] = useState('')
 
   useEffect(() => {
     cargarContratistas()
   }, [cargarContratistas])
+
+  // Limpiar búsqueda al cambiar de tab para mejor UX
+  const limpiarBusqueda = () => setBusqueda('')
 
   const limpiarFormulario = () => {
     setFormData({ razon_social: '', rut: '' })
@@ -49,6 +52,15 @@ const ContratistasPanel = () => {
   const handleEditar = (c) => {
     setFormData({ razon_social: c.razon_social, rut: c.rut })
     setEditandoId(c.id)
+  }
+
+  const handleCambiarEstado = async (id, nuevoEstado) => {
+    try {
+      await cambiarEstado(id, nuevoEstado)
+      cargarContratistas()
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   const filtrarData = (lista) => {
@@ -98,8 +110,20 @@ const ContratistasPanel = () => {
       <section className="panel">
         <div className="panel-top table-top">
           <div className="tabs">
-            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
-            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
+            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => { setTabActiva('activos'); limpiarBusqueda(); }}>Activos</button>
+            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => { setTabActiva('inactivos'); limpiarBusqueda(); }}>Inactivos</button>
+          </div>
+          <div className="table-controls">
+            <div className="search-wrapper">
+              <span className="search-icon">🔍</span>
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder="Buscar..." 
+                value={busqueda} 
+                onChange={e => setBusqueda(e.target.value)} 
+              />
+            </div>
           </div>
         </div>
         <div className="table-wrap">
@@ -118,7 +142,7 @@ const ContratistasPanel = () => {
                   <td>{c.rut}</td>
                   <td>
                     <button className="btn-mini btn-edit" onClick={() => handleEditar(c)}>Editar</button>
-                    <button className="btn-mini btn-danger" onClick={() => cambiarEstado(c.id, !c.estado_activo)}>{c.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                    <button className="btn-mini btn-danger" onClick={() => handleCambiarEstado(c.id, !c.estado_activo)}>{c.estado_activo ? 'Borrar' : 'Reactivar'}</button>
                   </td>
                 </tr>
               ))}

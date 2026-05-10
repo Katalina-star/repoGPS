@@ -1,9 +1,50 @@
 version: '3.8'
 
 # Override para desarrollo local - NO commitear a main
-# Uso: docker-compose -f docker-compose.yml -f docker-compose.local.yml up
+# Uso: docker-compose -f docker-compose.yml -f docker-compose.local.yml up --build
 
 services:
+  # ============================================
+  # Microservicio Mantenedor (Directo sin build - usa código local)
+  # ============================================
+  ms-mantenedor:
+    image: node:18-alpine
+    container_name: ms-mantenedor
+    working_dir: /app
+    command: sh -c "npm install && node index.js"
+    environment:
+      - DB_USER=postgres
+      - DB_HOST=db_mantenedor
+      - DB_NAME=db_mantenedor
+      - DB_PASSWORD=password123
+      - DB_PORT=5432
+      - PORT=3001
+    volumes:
+      - ./backend/ms-mantenedor:/app
+    networks:
+      - app-network
+
+  # ============================================
+  # Microservicio Expedientes (Directo sin build - usa código local)
+  # ============================================
+  ms-expedientes:
+    image: node:18-alpine
+    container_name: ms-expedientes
+    working_dir: /app
+    command: sh -c "npm install && node index.js"
+    environment:
+      - DB_USER=postgres
+      - DB_HOST=db_expedientes
+      - DB_NAME=db_expedientes
+      - DB_PASSWORD=password123
+      - DB_PORT=5432
+      - PORT=3002
+      - MS_MANTENEDOR_URL=http://ms-mantenedor:3001
+    volumes:
+      - ./backend/ms-expedientes:/app
+    networks:
+      - app-network
+
   # ============================================
   # Frontend (Build local desde repositorio)
   # ============================================
@@ -13,9 +54,11 @@ services:
       dockerfile: Dockerfile
     container_name: frontend-ui
     environment:
-      - VITE_API_URL=http://localhost:8045
+      # Usar ruta relativa para que funcione desde el navegador
+      - VITE_API_URL=
     volumes:
       - ./frontend/src:/app/src
+      - /app/node_modules
     ports:
       - "5173:5173"
     networks:

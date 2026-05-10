@@ -1,27 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useExpedientes } from '../../hooks/useExpedientes'
-import { useApi } from '../../hooks/useApi'
 
 const Dashboard = ({ user, esAdmin = true }) => {
   const { expedientes, cargarExpedientes } = useExpedientes()
-  const { get } = useApi()
-  const [etapasFinales, setEtapasFinales] = useState([])
 
   useEffect(() => {
-    const cargar = async () => {
-      await cargarExpedientes()
-      try {
-        const data = await get('/api/etapas-proceso')
-        if (Array.isArray(data)) {
-          setEtapasFinales(data.filter(e => e.es_final).map(e => e.nombre.toLowerCase()))
-        }
-      } catch (err) {
-        console.error('Error al cargar etapas:', err)
-      }
-    }
-    cargar()
+    cargarExpedientes()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const navigate = useNavigate()
 
   const ahora = new Date()
 
@@ -38,32 +27,30 @@ const Dashboard = ({ user, esAdmin = true }) => {
     terminado: 0
   }
 
+  // Usar el campo 'estado' del backend: Pendiente, En Revision, Aprobado
   expedientesFiltrados.forEach(exp => {
-    const etapa = (exp.etapa_actual || '').toLowerCase()
-    
-    // Terminado: etapa es final
-    if (etapasFinales.some(ef => etapa.includes(ef))) {
-      stats.terminado++
-      return
-    }
-
-    // Atrasado: +10 días sin cambios Y ya fue iniciado
     const fechaExp = exp.fecha_actualizacion || exp.fecha_creacion
     const diasTranscurridos = Math.floor((ahora - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
-    if (diasTranscurridos > 10 && etapa !== 'pendiente' && etapa !== '') {
-      stats.atrasado++
-      return
+    
+    if (exp.estado === 'Aprobado') {
+      stats.terminado++
+    } else if (exp.estado === 'En Revision') {
+      // Atrasado: más de 10 días en revisión
+      if (diasTranscurridos > 10) {
+        stats.atrasado++
+      } else {
+        stats.enCurso++
+      }
+    } else {
+      // Pendiente o sin asignar
+      stats.pendiente++
     }
-
-    // En Curso: etapa asignada y no es Pendiente
-    if (etapa && !etapa.includes('pendiente')) {
-      stats.enCurso++
-      return
-    }
-
-    // Pendiente: sin iniciar o Pendiente
-    stats.pendiente++
   })
+
+  const handleClick = (estado) => {
+    // Map estados internos to query param values
+    navigate(`/expedientes${estado ? `?estado=${encodeURIComponent(estado)}` : ''}`)
+  }
 
   return (
     <div className="dashboard">
@@ -72,25 +59,33 @@ const Dashboard = ({ user, esAdmin = true }) => {
       </h2>
       
       <div className="dashboard-grid">
-        <div className="dashboard-card" style={{ borderLeftColor: '#64748b' }}>
+        <button type="button" className="dashboard-card" style={{ borderLeftColor: '#64748b' }} onClick={() => handleClick('')}>
           <div className="dashboard-value" style={{ color: '#64748b' }}>{stats.total}</div>
           <div className="dashboard-label">Total</div>
-        </div>
+        </button>
         <div className="dashboard-card" style={{ borderLeftColor: '#94a3b8' }}>
-          <div className="dashboard-value" style={{ color: '#94a3b8' }}>{stats.pendiente}</div>
-          <div className="dashboard-label">Pendiente</div>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('Pendiente')}>
+            <div className="dashboard-value" style={{ color: '#94a3b8' }}>{stats.pendiente}</div>
+            <div className="dashboard-label">Pendiente</div>
+          </button>
         </div>
         <div className="dashboard-card" style={{ borderLeftColor: '#3b82f6' }}>
-          <div className="dashboard-value" style={{ color: '#3b82f6' }}>{stats.enCurso}</div>
-          <div className="dashboard-label">En Curso</div>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('En Revision')}>
+            <div className="dashboard-value" style={{ color: '#3b82f6' }}>{stats.enCurso}</div>
+            <div className="dashboard-label">En Curso</div>
+          </button>
         </div>
         <div className="dashboard-card" style={{ borderLeftColor: '#ef4444' }}>
-          <div className="dashboard-value" style={{ color: '#ef4444' }}>{stats.atrasado}</div>
-          <div className="dashboard-label">Atrasado</div>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('En Revision')}>
+            <div className="dashboard-value" style={{ color: '#ef4444' }}>{stats.atrasado}</div>
+            <div className="dashboard-label">Atrasado</div>
+          </button>
         </div>
         <div className="dashboard-card" style={{ borderLeftColor: '#22c55e' }}>
-          <div className="dashboard-value" style={{ color: '#22c55e' }}>{stats.terminado}</div>
-          <div className="dashboard-label">Terminado</div>
+          <button type="button" className="dashboard-card-inner" onClick={() => handleClick('Aprobado')}>
+            <div className="dashboard-value" style={{ color: '#22c55e' }}>{stats.terminado}</div>
+            <div className="dashboard-label">Terminado</div>
+          </button>
         </div>
       </div>
     </div>

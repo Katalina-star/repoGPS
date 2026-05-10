@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useExpedientes } from '../../hooks/useExpedientes'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useDisciplinas } from '../../hooks/useDisciplinas'
@@ -6,7 +7,7 @@ import { useApi } from '../../hooks/useApi'
 import { useContratistas } from '../../hooks/useContratistas'
 import ExpedienteDetalle from './ExpedienteDetalle'
 
-const ExpedientesPanel = ({ user, busqueda }) => {
+const ExpedientesPanel = ({ user }) => {
   const { get } = useApi()
   const {
     expedientes,
@@ -34,8 +35,11 @@ const ExpedientesPanel = ({ user, busqueda }) => {
     descripcion: ''
   })
   const [etapasProceso, setEtapasProceso] = useState([])
-  const [filtroEstado, setFiltroEstado] = useState('todos')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const estadoFromQuery = searchParams.get('estado') || 'todos'
+  const [filtroEstado, setFiltroEstado] = useState(estadoFromQuery)
   const [filtroProceso, setFiltroProceso] = useState('')
+  const [busqueda, setBusqueda] = useState('')
 
   // Listas filtradas para selects en cascada
   const [areasFiltradas, setAreasFiltradas] = useState([])
@@ -49,6 +53,13 @@ const ExpedientesPanel = ({ user, busqueda }) => {
   useEffect(() => {
     Promise.all([cargarExpedientes(), cargarProcesos(), cargarDisciplinas(), cargarContratistas()])
   }, [cargarExpedientes, cargarProcesos, cargarDisciplinas, cargarContratistas])
+
+  // Sincronizar filtro con query param si cambia desde navegación externa (ej. dashboard)
+  useEffect(() => {
+    const estadoQ = searchParams.get('estado') || 'todos'
+    setFiltroEstado(estadoQ)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString()])
 
   // Cargar áreas cuando se selecciona un contratista
   const cargarAreasPorContratista = useCallback(async (contratistaId) => {
@@ -94,8 +105,8 @@ const ExpedientesPanel = ({ user, busqueda }) => {
       return
     }
     try {
-      // Cargar todos los procesos y filtrar en el frontend
-      const data = await get(`/api/procesos`)
+      // Cargar todos los procesos (activos e inactivos) y filtrar en el frontend
+      const data = await get(`/api/procesos?incluir_inactivos=true`)
       if (Array.isArray(data)) {
         const filtrados = data.filter(p => p.area_id === Number(areaId))
         setProcesosFiltrados(filtrados)
@@ -153,6 +164,13 @@ const ExpedientesPanel = ({ user, busqueda }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Verificar que el proceso tenga etapas activas
+    if (etapasProceso.length === 0) {
+      alert('No se puede crear el expediente. El proceso seleccionado no tiene etapas activas.\n\nCree etapas en el módulo de Etapas primero.')
+      return
+    }
+    
     try {
       await crearExpediente(formData)
       setMostrarForm(false)
@@ -175,13 +193,9 @@ const ExpedientesPanel = ({ user, busqueda }) => {
 
     return filtered
       .filter(e => {
-        if (filtroEstado === 'en_proceso') {
-          return !e.etapa_actual?.toLowerCase().includes('aprobad')
-        }
-        if (filtroEstado === 'completados') {
-          return e.etapa_actual?.toLowerCase().includes('aprobad')
-        }
-        return true
+        if (!filtroEstado || filtroEstado === 'todos') return true
+        // filtroEstado holds backend estado values: 'Pendiente','En Revision','Aprobado'
+        return e.estado === filtroEstado
       })
       .filter(e => !filtroProceso || e.proceso_id === Number(filtroProceso))
       .filter(e => {
@@ -257,6 +271,11 @@ const ExpedientesPanel = ({ user, busqueda }) => {
                     <option value="">Seleccione...</option>
                     {procesosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                   </select>
+                  {formData.proceso_id && etapasProceso.length === 0 && (
+                    <p style={{ color: '#e74c3c', fontSize: '12px', marginTop: '4px' }}>
+                      ⚠️ Este proceso no tiene etapas activas. El expediente no podrá avanzar.
+                    </p>
+                  )}
                 </div>
 
                 <div className="field">
@@ -275,30 +294,50 @@ const ExpedientesPanel = ({ user, busqueda }) => {
                   <input type="text" value={etapasProceso[0]?.nombre || ''} disabled />
                 </div>
               )}
-            </form>
-          )}
 
-          {mostrarForm && (
-            <div className="form-actions">
-              <button type="submit" className="btn btn-primary">Crear Expediente</button>
-            </div>
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary">Crear Expediente</button>
+              </div>
+            </form>
           )}
         </section>
       )}
 
       <section className="panel">
         <div className="panel-top table-top">
-          <h3>Expedientes</h3>
           <div className="filter-group">
-            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+            <select value={filtroEstado} onChange={e => {
+              const v = e.target.value
+              setFiltroEstado(v)
+              // update query param to keep navigation/links in sync
+              if (v === 'todos') {
+                searchParams.delete('estado')
+                setSearchParams(searchParams)
+              } else {
+                setSearchParams({ estado: v })
+              }
+            }}>
               <option value="todos">Todos</option>
-              <option value="en_proceso">En Proceso</option>
-              <option value="completados">Completados</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Revision">En Revision</option>
+              <option value="Aprobado">Aprobado</option>
             </select>
             <select value={filtroProceso} onChange={e => setFiltroProceso(e.target.value)}>
               <option value="">Todos los Procesos</option>
               {procesos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
+          </div>
+          <div className="table-controls">
+            <div className="search-wrapper">
+              <span className="search-icon">🔍</span>
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder="Buscar..." 
+                value={busqueda} 
+                onChange={e => setBusqueda(e.target.value)} 
+              />
+            </div>
           </div>
         </div>
         <div className="table-wrap">
@@ -317,7 +356,7 @@ const ExpedientesPanel = ({ user, busqueda }) => {
                 <tr key={exp.id}>
                   <td>{exp.titulo}</td>
                   <td>{exp.proceso_nombre || '-'}</td>
-                  <td><span className="role-tag">{exp.etapa_actual || 'Sin asignar'}</span></td>
+                  <td><span className="role-tag">{exp.estado}</span></td>
                   <td>{new Date(exp.fecha_creacion).toLocaleDateString()}</td>
                   <td>
                     <button className="btn-mini btn-edit" onClick={() => abrirDetalle(exp)}>Ver Detalle</button>

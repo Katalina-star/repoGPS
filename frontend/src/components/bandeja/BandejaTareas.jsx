@@ -53,6 +53,10 @@ const BandejaTareas = () => {
 
   const handleAccion = async (tareaId, estado) => {
     try {
+      if (estado === 'rechazada' && !observacion.trim()) {
+        alert('Para rechazar debes ingresar una observación')
+        return
+      }
       await actualizarTarea(tareaId, estado, observacion || null)
       setTareaExpandida(null)
       setObservacion('')

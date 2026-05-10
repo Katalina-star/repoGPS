@@ -7,6 +7,7 @@ import UsuariosPanel from './components/mantenedores/Usuarios'
 import ContratistasPanel from './components/mantenedores/Contratistas'
 import AreasPanel from './components/mantenedores/Áreas'
 import DisciplinasPanel from './components/mantenedores/Disciplinas'
+import CategoriasPanel from './components/mantenedores/Categorias'
 import ProcesosPanel from './components/procesos/Procesos'
 import EtapasPanel from './components/procesos/Etapas'
 import ExpedientesPanel from './components/expedientes/Expedientes'
@@ -22,19 +23,19 @@ const titulos = {
   contratistas: 'Contratistas',
   areas: 'Áreas',
   disciplinas: 'Disciplinas',
+  categorias: 'Categorías',
   procesos: 'Procesos',
   etapas: 'Etapas',
   expedientes: 'Expedientes'
 }
 
 // Menús por rol
-const menuAdmin = ['dashboard', 'usuarios', 'contratistas', 'areas', 'disciplinas', 'procesos', 'etapas', 'expedientes']
+const menuAdmin = ['dashboard', 'usuarios', 'contratistas', 'areas', 'disciplinas', 'categorias', 'procesos', 'etapas', 'expedientes']
 const menuNoAdmin = ['dashboard', 'bandeja', 'expedientes']
 
 const AppContent = () => {
   const { user, logout, loading } = useAuth()
   const [seccionActual, setSeccionActual] = useState('dashboard')
-  const [busqueda, setBusqueda] = useState('')
 
   // Calcular menú según rol (sin useEffect)
   const menuItems = esAdmin(user) ? menuAdmin : menuNoAdmin
@@ -57,12 +58,14 @@ const AppContent = () => {
         return <AreasPanel />
       case 'disciplinas':
         return <DisciplinasPanel />
+      case 'categorias':
+        return <CategoriasPanel />
       case 'procesos':
-        return <ProcesosPanel busqueda={busqueda} />
+        return <ProcesosPanel />
       case 'etapas':
-        return <EtapasPanel busqueda={busqueda} />
+        return <EtapasPanel />
       case 'expedientes':
-        return <ExpedientesPanel user={user} busqueda={busqueda} />
+        return <ExpedientesPanel user={user} />
       default:
         return <Dashboard esAdmin={esAdmin(user)} />
     }
@@ -86,11 +89,7 @@ const AppContent = () => {
         titulos={titulos}
         usuario={user}
       />
-      <Content 
-        titulo={titulos[seccionActual]} 
-        busqueda={busqueda}
-        onBuscar={setBusqueda}
-      >
+      <Content titulo={titulos[seccionActual]}>
         {renderPanel()}
       </Content>
     </div>

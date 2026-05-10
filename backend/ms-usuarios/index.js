@@ -252,6 +252,35 @@ app.patch("/api/usuarios/:id/estado", async (req, res) => {
   }
 });
 
+// PATCH /api/usuarios/:id/area - Asignar usuario a un área (HU-20)
+// Reemplaza cualquier área anterior, garantizando 1 usuario = 1 área
+app.patch("/api/usuarios/:id/area", async (req, res) => {
+  const { id } = req.params;
+  const { area_id } = req.body; // null = desasignar
+
+  try {
+    await pool.query("BEGIN");
+
+    // Primero eliminar cualquier vínculo existente
+    await pool.query("DELETE FROM usuario_area WHERE usuario_id = $1", [id]);
+
+    // Si hay área_id, crear el nuevo vínculo
+    if (area_id) {
+      await pool.query(
+        "INSERT INTO usuario_area (usuario_id, area_id) VALUES ($1, $2)",
+        [id, area_id]
+      );
+    }
+
+    await pool.query("COMMIT");
+    res.json({ message: "Área asignada correctamente" });
+  } catch (err) {
+    await pool.query("ROLLBACK");
+    console.error(err);
+    res.status(500).json({ error: "Error al asignar área" });
+  }
+});
+
 // DELETE /api/usuarios/:id - Eliminación lógica
 app.delete("/api/usuarios/:id", async (req, res) => {
   const { id } = req.params;

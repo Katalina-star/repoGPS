@@ -3,8 +3,8 @@ import { useEtapas } from '../../hooks/useEtapas'
 import { useProcesos } from '../../hooks/useProcesos'
 import { useUsuarios } from '../../hooks/useUsuarios'
 
-const EtapasPanel = ({ busqueda = '' }) => {
-  const { etapas, cargarEtapas, crearEtapa, actualizarEtapa, cambiarEstado } = useEtapas()
+const EtapasPanel = () => {
+  const { etapas, cargarEtapas, crearEtapa, actualizarEtapa, cambiarEstado, eliminar } = useEtapas()
   const { procesos, cargarProcesos } = useProcesos()
   const { roles, cargarRoles } = useUsuarios()
 
@@ -18,10 +18,13 @@ const EtapasPanel = ({ busqueda = '' }) => {
   })
   const [editandoId, setEditandoId] = useState(null)
   const [tabActiva, setTabActiva] = useState('activos')
+  const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => {
     Promise.all([cargarEtapas(), cargarProcesos(), cargarRoles()])
   }, [cargarEtapas, cargarProcesos, cargarRoles])
+
+  const limpiarBusqueda = () => setBusqueda('')
 
   const limpiarFormulario = () => {
     setFormData({
@@ -37,6 +40,10 @@ const EtapasPanel = ({ busqueda = '' }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if ((formData.tipo_tarea && !formData.rol_id) || (!formData.tipo_tarea && formData.rol_id)) {
+      alert('Tipo de tarea y rol responsable deben definirse juntos')
+      return
+    }
     try {
       if (editandoId) {
         await actualizarEtapa(editandoId, formData)
@@ -60,6 +67,28 @@ const EtapasPanel = ({ busqueda = '' }) => {
       rol_id: String(e.rol_id || '')
     })
     setEditandoId(e.id)
+  }
+
+  // Eliminar usa DELETE
+  const handleEliminar = async (id) => {
+    try {
+      await eliminar(id)
+      cargarEtapas()
+      // Después de borrar, ir a inactivos
+      setTabActiva('inactivos')
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  // Reactivar usa PATCH
+  const handleReactivar = async (id) => {
+    try {
+      await cambiarEstado(id, true)
+      cargarEtapas()
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   const filtrarData = () => {
@@ -108,7 +137,11 @@ const EtapasPanel = ({ busqueda = '' }) => {
           </div>
           <div className="field">
             <label>Rol responsable</label>
-            <select value={formData.rol_id} onChange={e => setFormData({ ...formData, rol_id: e.target.value })}>
+            <select
+              value={formData.rol_id}
+              onChange={e => setFormData({ ...formData, rol_id: e.target.value })}
+              disabled={!formData.tipo_tarea}
+            >
               <option value="">Sin asignar</option>
               {roles.map(r => (
                 <option key={r.id} value={r.id}>{r.nombre}</option>
@@ -131,10 +164,21 @@ const EtapasPanel = ({ busqueda = '' }) => {
 
       <section className="panel">
         <div className="panel-top table-top">
-          <h3>Etapas por Proceso</h3>
           <div className="tabs">
-            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => setTabActiva('activos')}>Activos</button>
-            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => setTabActiva('inactivos')}>Inactivos</button>
+            <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => { setTabActiva('activos'); limpiarBusqueda(); }}>Activos</button>
+            <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => { setTabActiva('inactivos'); limpiarBusqueda(); }}>Inactivos</button>
+          </div>
+          <div className="table-controls">
+            <div className="search-wrapper">
+              <span className="search-icon">🔍</span>
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder="Buscar..." 
+                value={busqueda} 
+                onChange={e => setBusqueda(e.target.value)} 
+              />
+            </div>
           </div>
         </div>
         <div className="table-wrap">
@@ -164,7 +208,7 @@ const EtapasPanel = ({ busqueda = '' }) => {
                     <td>{etapa.es_final ? '✓' : 'No'}</td>
                     <td>
                       <button className="btn-mini btn-edit" onClick={() => handleEditar(etapa)}>Editar</button>
-                      <button className="btn-mini btn-danger" onClick={() => cambiarEstado(etapa.id, !etapa.estado_activo)}>{etapa.estado_activo ? 'Borrar' : 'Reactivar'}</button>
+                      <button className="btn-mini btn-danger" onClick={() => etapa.estado_activo ? handleEliminar(etapa.id) : handleReactivar(etapa.id)}>{etapa.estado_activo ? 'Borrar' : 'Reactivar'}</button>
                     </td>
                   </tr>
                 )

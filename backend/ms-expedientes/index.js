@@ -79,6 +79,84 @@ function isMissingColumnError(err, colName) {
   return msg.includes(`column t.${colName} does not exist`) || msg.includes(`column ${colName} does not exist`);
 }
 
+const TIPOS_TAREA_VALIDOS = new Set(["revision", "aprobacion", "visacion"]);
+
+function normalizarTipoTarea(tipo_tarea) {
+  if (!tipo_tarea) return null;
+  const normalizado = String(tipo_tarea).trim().toLowerCase();
+  if (!TIPOS_TAREA_VALIDOS.has(normalizado)) {
+    return null;
+  }
+  return normalizado;
+}
+
+async function validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id }, etapaId = null) {
+  const procesoIdNum = Number(proceso_id);
+  const ordenNum = Number(orden);
+  const rolIdNum = rol_id ? Number(rol_id) : null;
+
+  if (!Number.isInteger(procesoIdNum) || procesoIdNum <= 0) {
+    throw new Error("proceso_id inválido");
+  }
+
+  if (!Number.isInteger(ordenNum) || ordenNum <= 0) {
+    throw new Error("orden debe ser un entero mayor a 0");
+  }
+
+  const tipoNormalizado = tipo_tarea ? normalizarTipoTarea(tipo_tarea) : null;
+  if (tipo_tarea && !tipoNormalizado) {
+    throw new Error("tipo_tarea inválido (use: revision, aprobacion o visacion)");
+  }
+
+  if ((tipoNormalizado && !rolIdNum) || (!tipoNormalizado && rolIdNum)) {
+    throw new Error("tipo_tarea y rol_id deben enviarse juntos");
+  }
+
+  const procesoExiste = await pool.query(
+    "SELECT id FROM procesos WHERE id = $1",
+    [procesoIdNum]
+  );
+  if (procesoExiste.rows.length === 0) {
+    throw new Error("Proceso no encontrado");
+  }
+
+  const ordenDuplicado = await pool.query(
+    `SELECT id FROM etapas_proceso
+     WHERE proceso_id = $1
+       AND orden = $2
+       AND estado_activo = true
+       AND ($3::int IS NULL OR id <> $3)
+     LIMIT 1`,
+    [procesoIdNum, ordenNum, etapaId]
+  );
+  if (ordenDuplicado.rows.length > 0) {
+    throw new Error("Ya existe una etapa activa con ese orden para el proceso");
+  }
+
+  if (Boolean(es_final)) {
+    const finalExistente = await pool.query(
+      `SELECT id FROM etapas_proceso
+       WHERE proceso_id = $1
+         AND es_final = true
+         AND estado_activo = true
+         AND ($2::int IS NULL OR id <> $2)
+       LIMIT 1`,
+      [procesoIdNum, etapaId]
+    );
+    if (finalExistente.rows.length > 0) {
+      throw new Error("Ya existe una etapa final activa para este proceso");
+    }
+  }
+
+  return {
+    proceso_id: procesoIdNum,
+    orden: ordenNum,
+    es_final: Boolean(es_final),
+    tipo_tarea: tipoNormalizado,
+    rol_id: rolIdNum
+  };
+}
+
 async function getTareaConEtapa(tareaId) {
   let etapaColumn = await getTareasEtapaColumn();
   const buildQuery = () => `
@@ -124,13 +202,23 @@ const pool = new Pool({
 
 app.get("/api/procesos", async (req, res) => {
   try {
-    const { area_id } = req.query;
-    let query = "SELECT * FROM procesos WHERE estado_activo = true";
+    const { area_id, incluir_inactivos } = req.query;
+    let query = "SELECT id, area_id, nombre, descripcion, estado_activo FROM procesos";
     let params = [];
+    let conditions = [];
+    
+    // Por defecto solo activos, usar ?incluir_inactivos=true para ver todos
+    if (incluir_inactivos !== 'true') {
+      conditions.push("estado_activo = true");
+    }
     
     if (area_id && area_id !== undefined && area_id !== '') {
-      query += " AND area_id = $1";
+      conditions.push("area_id = $1");
       params.push(Number(area_id));
+    }
+    
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
     }
     
     query += " ORDER BY id ASC";
@@ -184,9 +272,19 @@ app.get("/api/procesos/:id", async (req, res) => {
 app.post("/api/procesos", async (req, res) => {
   const { area_id, nombre, descripcion } = req.body;
   try {
+    if (!area_id) {
+      return res.status(400).json({ error: "area_id es obligatorio" });
+    }
+    
+    // Validar que area_id sea un número válido
+    const areaIdNum = Number(area_id);
+    if (!Number.isInteger(areaIdNum) || areaIdNum <= 0) {
+      return res.status(400).json({ error: "area_id debe ser un número válido" });
+    }
+
     const result = await pool.query(
       "INSERT INTO procesos (area_id, nombre, descripcion) VALUES ($1, $2, $3) RETURNING *",
-      [area_id, nombre, descripcion]
+      [areaIdNum, nombre, descripcion]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -198,9 +296,19 @@ app.put("/api/procesos/:id", async (req, res) => {
   const { id } = req.params;
   const { area_id, nombre, descripcion } = req.body;
   try {
+    if (!area_id) {
+      return res.status(400).json({ error: "area_id es obligatorio" });
+    }
+    
+    // Validar que area_id sea un número válido
+    const areaIdNum = Number(area_id);
+    if (!Number.isInteger(areaIdNum) || areaIdNum <= 0) {
+      return res.status(400).json({ error: "area_id debe ser un número válido" });
+    }
+
     const result = await pool.query(
       "UPDATE procesos SET area_id = $1, nombre = $2, descripcion = $3 WHERE id = $4 RETURNING *",
-      [area_id, nombre, descripcion, id]
+      [areaIdNum, nombre, descripcion, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Proceso no encontrado" });
@@ -214,6 +322,24 @@ app.put("/api/procesos/:id", async (req, res) => {
 app.delete("/api/procesos/:id", async (req, res) => {
   const { id } = req.params;
   try {
+    // Verificar que no haya etapas activas asociadas
+    const etapasCount = await pool.query(
+      "SELECT COUNT(*) FROM etapas_proceso WHERE proceso_id = $1 AND estado_activo = true",
+      [id]
+    );
+    if (parseInt(etapasCount.rows[0].count) > 0) {
+      return res.status(400).json({ error: "No se puede eliminar el proceso porque tiene etapas activas. Elimine las etapas primero." });
+    }
+
+    // Verificar que no haya expedientes activos asociados
+    const expedientesCount = await pool.query(
+      "SELECT COUNT(*) FROM expedientes WHERE proceso_id = $1 AND estado_activo = true",
+      [id]
+    );
+    if (parseInt(expedientesCount.rows[0].count) > 0) {
+      return res.status(400).json({ error: "No se puede eliminar el proceso porque tiene expedientes activos." });
+    }
+
     await pool.query("UPDATE procesos SET estado_activo = false WHERE id = $1", [id]);
     res.json({ message: "Proceso eliminado lógicamente" });
   } catch (err) {
@@ -244,9 +370,20 @@ app.patch("/api/procesos/:id/estado", async (req, res) => {
 
 app.get("/api/etapas-proceso", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM etapas_proceso WHERE estado_activo = true ORDER BY proceso_id, orden ASC"
-    );
+    const { incluir_inactivos } = req.query;
+    let query = "SELECT * FROM etapas_proceso";
+    let conditions = [];
+    
+    if (incluir_inactivos !== 'true') {
+      conditions.push("estado_activo = true");
+    }
+    
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
+    }
+    
+    query += " ORDER BY proceso_id, orden ASC";
+    const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -282,13 +419,14 @@ app.get("/api/etapas-proceso/:id", async (req, res) => {
 app.post("/api/etapas-proceso", async (req, res) => {
   const { proceso_id, nombre, orden, es_final, tipo_tarea, rol_id } = req.body;
   try {
+    const validado = await validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id });
     const result = await pool.query(
       "INSERT INTO etapas_proceso (proceso_id, nombre, orden, es_final, tipo_tarea, rol_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [proceso_id, nombre, orden, es_final || false, tipo_tarea || null, rol_id || null]
+      [validado.proceso_id, nombre, validado.orden, validado.es_final, validado.tipo_tarea, validado.rol_id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -296,16 +434,17 @@ app.put("/api/etapas-proceso/:id", async (req, res) => {
   const { id } = req.params;
   const { proceso_id, nombre, orden, es_final, tipo_tarea, rol_id } = req.body;
   try {
+    const validado = await validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id }, Number(id));
     const result = await pool.query(
       "UPDATE etapas_proceso SET proceso_id = $1, nombre = $2, orden = $3, es_final = $4, tipo_tarea = $5, rol_id = $6 WHERE id = $7 RETURNING *",
-      [proceso_id, nombre, orden, es_final, tipo_tarea, rol_id, id]
+      [validado.proceso_id, nombre, validado.orden, validado.es_final, validado.tipo_tarea, validado.rol_id, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Etapa no encontrada" });
     }
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -346,7 +485,7 @@ app.get("/api/expedientes", authMiddleware, async (req, res) => {
 
   try {
     let query = `
-      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final
       FROM expedientes e
       LEFT JOIN procesos p ON e.proceso_id = p.id
       LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
@@ -363,7 +502,21 @@ app.get("/api/expedientes", authMiddleware, async (req, res) => {
     query += " ORDER BY e.fecha_creacion DESC";
 
     const result = await pool.query(query, params);
-    res.json(result.rows);
+
+    // Agregar campo de estado basado en la etapa
+    const expedientesConEstado = result.rows.map(exp => {
+      let estado = 'Pendiente';
+      if (exp.etapa_actual_id) {
+        if (exp.es_final) {
+          estado = 'Aprobado';
+        } else {
+          estado = 'En Revision';
+        }
+      }
+      return { ...exp, estado };
+    });
+
+    res.json(expedientesConEstado);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -847,6 +1000,10 @@ app.patch("/api/tareas/:id", async (req, res) => {
 
   if (!['completada', 'rechazada'].includes(estado)) {
     return res.status(400).json({ error: "estado inválido" });
+  }
+
+  if (estado === 'rechazada' && !String(observacion || '').trim()) {
+    return res.status(400).json({ error: "observacion es requerida para rechazar" });
   }
 
   try {

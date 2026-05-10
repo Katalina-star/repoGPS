@@ -5,6 +5,7 @@ export const useUsuarios = () => {
   const [usuarios, setUsuarios] = useState([])
   const [roles, setRoles] = useState([])
   const [areas, setAreas] = useState([])
+  const [usuariosSinArea, setUsuariosSinArea] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { get, post, put, patch } = useApi()
@@ -16,6 +17,8 @@ export const useUsuarios = () => {
       const data = await get('/api/usuarios')
       if (Array.isArray(data)) {
         setUsuarios(data)
+        // Filtrar usuarios sin área para el panel de asignación
+        setUsuariosSinArea(data.filter(u => !u.area_id))
       }
     } catch (err) {
       setError(err.message)
@@ -65,10 +68,17 @@ export const useUsuarios = () => {
     return data
   }, [patch])
 
+  // HU-20: Asignar usuario a un área (reemplaza cualquier área anterior)
+  const asignarArea = useCallback(async (usuarioId, areaId) => {
+    const data = await patch(`/api/usuarios/${usuarioId}/area`, { area_id: areaId })
+    return data
+  }, [patch])
+
   return {
     usuarios,
     roles,
     areas,
+    usuariosSinArea,
     loading,
     error,
     cargarUsuarios,
@@ -76,6 +86,7 @@ export const useUsuarios = () => {
     cargarAreas,
     crearUsuario,
     actualizarUsuario,
-    cambiarEstado
+    cambiarEstado,
+    asignarArea
   }
 }
