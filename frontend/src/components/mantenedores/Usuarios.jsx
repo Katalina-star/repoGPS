@@ -155,7 +155,7 @@ const UsuariosPanel = () => {
           </div>
           <div className="table-controls">
             <div className="search-wrapper">
-              <span className="search-icon">🔍</span>
+              <span className="search-icon"></span>
               <input 
                 type="text" 
                 className="search-input"

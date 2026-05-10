@@ -283,7 +283,7 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
                   </select>
                   {formData.proceso_id && etapasProceso.length === 0 && (
                     <p style={{ color: '#e74c3c', fontSize: '12px', marginTop: '4px' }}>
-                      ⚠️ Este proceso no tiene etapas activas. El expediente no podrá avanzar.
+                      Este proceso no tiene etapas activas. El expediente no podrá avanzar.
                     </p>
                   )}
                 </div>
@@ -343,7 +343,7 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
           </div>
           <div className="table-controls">
             <div className="search-wrapper">
-              <span className="search-icon">🔍</span>
+              <span className="search-icon"></span>
               <input 
                 type="text" 
                 className="search-input"

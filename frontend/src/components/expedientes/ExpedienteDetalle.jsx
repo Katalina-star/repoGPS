@@ -76,12 +76,12 @@ const ExpedienteDetalle = ({
           </div>
 
           <div className="exp-actions">
-            <button className="btn btn-primary" onClick={handleAvanzar}>▶ Avanzar</button>
-            <button className="btn btn-secondary" onClick={handleDevolver}>◀ Devolver</button>
+            <button className="btn btn-primary" onClick={handleAvanzar}>Avanzar</button>
+            <button className="btn btn-secondary" onClick={handleDevolver}>Devolver</button>
           </div>
 
           <div className="exp-section">
-            <h4>📋 Historial</h4>
+            <h4>Historial</h4>
             {historial.length > 0 ? (
               <table className="users-table">
                 <thead><tr><th>Fecha</th><th>De</th><th>A</th><th>Usuario</th><th>Observación</th></tr></thead>
@@ -101,7 +101,7 @@ const ExpedienteDetalle = ({
           </div>
 
           <div className="exp-section">
-            <h4>📎 Documentos</h4>
+            <h4>Documentos</h4>
             {documentos.length > 0 ? (
               <table className="users-table">
                 <thead><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Fecha</th></tr></thead>

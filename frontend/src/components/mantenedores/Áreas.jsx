@@ -162,7 +162,7 @@ const AreasPanel = () => {
           </div>
           <div className="table-controls">
             <div className="search-wrapper">
-              <span className="search-icon">🔍</span>
+              <span className="search-icon"></span>
               <input
                 type="text"
                 className="search-input"
@@ -215,7 +215,7 @@ const AreasPanel = () => {
             </div>
             <div className="table-controls" style={{ marginTop: '10px', marginBottom: '15px' }}>
               <div className="search-wrapper">
-                <span className="search-icon">🔍</span>
+                <span className="search-icon"></span>
                 <input
                   type="text"
                   className="search-input"
