@@ -10,6 +10,8 @@ app.use(express.json());
 // JWT Configuration (debe coincidir con ms-usuarios)
 const JWT_SECRET = process.env.JWT_SECRET || "repoGPS_jwt_secret_key_2026";
 const ADMIN_ROL_ID = 1;
+const MS_USUARIOS_URL = process.env.MS_USUARIOS_URL || "http://ms-usuarios:3000";
+const MS_MANTENEDOR_URL = process.env.MS_MANTENEDOR_URL || "http://ms-mantenedor:3001";
 
 // Middleware de autenticación JWT
 function authMiddleware(req, res, next) {
@@ -555,6 +557,29 @@ app.get("/api/expedientes/:id", authMiddleware, async (req, res) => {
 app.post("/api/expedientes", async (req, res) => {
   const { proceso_id, disciplina_id, subtipo_id, titulo, descripcion, fecha_termino } = req.body;
   try {
+    // Validar que disciplina y proceso pertenezcan a la misma área
+    if (disciplina_id && proceso_id) {
+      try {
+        const [disciplinaRes, procesoRes] = await Promise.all([
+          fetch(`${MS_MANTENEDOR_URL}/api/disciplinas/${disciplina_id}`),
+          fetch(`${MS_MANTENEDOR_URL}/api/procesos/${proceso_id}`)
+        ]);
+
+        if (!disciplinaRes.ok || !procesoRes.ok) {
+          return res.status(400).json({ error: "Disciplina o proceso inválido" });
+        }
+
+        const disciplina = await disciplinaRes.json();
+        const proceso = await procesoRes.json();
+
+        if (!disciplina?.area_id || !proceso?.area_id || disciplina.area_id !== proceso.area_id) {
+          return res.status(400).json({ error: "La disciplina y el proceso deben pertenecer a la misma área" });
+        }
+      } catch (err) {
+        return res.status(500).json({ error: "No se pudo validar el área del proceso" });
+      }
+    }
+
     // Obtener la primera etapa del proceso para asignarla automáticamente
     const etapaResult = await pool.query(
       "SELECT id FROM etapas_proceso WHERE proceso_id = $1 AND estado_activo = true ORDER BY orden ASC LIMIT 1",
@@ -576,13 +601,13 @@ app.post("/api/expedientes", async (req, res) => {
 
 app.put("/api/expedientes/:id", async (req, res) => {
   const { id } = req.params;
-  const { proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion } = req.body;
+  const { proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion, fecha_termino } = req.body;
   try {
     const result = await pool.query(
       `UPDATE expedientes SET proceso_id = $1, disciplina_id = $2, subtipo_id = $3,
-       etapa_actual_id = $4, titulo = $5, descripcion = $6, fecha_actualizacion = CURRENT_TIMESTAMP
-       WHERE id = $7 RETURNING *`,
-      [proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion, id]
+       etapa_actual_id = $4, titulo = $5, descripcion = $6, fecha_termino = $7, fecha_actualizacion = CURRENT_TIMESTAMP
+       WHERE id = $8 RETURNING *`,
+      [proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion, fecha_termino || null, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Expediente no encontrado" });
@@ -657,7 +682,21 @@ app.post("/api/expedientes/:id/avanzar", authMiddleware, async (req, res) => {
       await generarTareasPorEtapa(id, nuevaEtapa.id, pool);
     }
 
-    res.json({ message: "Expediente avanzado", nueva_etapa: nuevaEtapa });
+    const updated = await pool.query(`
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final
+      FROM expedientes e
+      LEFT JOIN procesos p ON e.proceso_id = p.id
+      LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
+      WHERE e.id = $1
+    `, [id]);
+
+    const exp = updated.rows[0];
+    let estado = 'Pendiente';
+    if (exp?.etapa_actual_id) {
+      estado = exp.es_final ? 'Aprobado' : 'En Revision';
+    }
+
+    res.json({ message: "Expediente avanzado", nueva_etapa: nuevaEtapa, expediente: { ...exp, estado } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -716,7 +755,21 @@ app.post("/api/expedientes/:id/devolver", authMiddleware, async (req, res) => {
       [id, expediente.etapa_actual_id, etapaAnterior.id, usuario_id, observacion || "Devolución"]
     );
 
-    res.json({ message: "Expediente devuelto", etapa_anterior: etapaAnterior });
+    const updated = await pool.query(`
+      SELECT e.*, p.nombre AS proceso_nombre, p.area_id, ep.nombre AS etapa_actual, ep.es_final
+      FROM expedientes e
+      LEFT JOIN procesos p ON e.proceso_id = p.id
+      LEFT JOIN etapas_proceso ep ON e.etapa_actual_id = ep.id
+      WHERE e.id = $1
+    `, [id]);
+
+    const exp = updated.rows[0];
+    let estado = 'Pendiente';
+    if (exp?.etapa_actual_id) {
+      estado = exp.es_final ? 'Aprobado' : 'En Revision';
+    }
+
+    res.json({ message: "Expediente devuelto", etapa_anterior: etapaAnterior, expediente: { ...exp, estado } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -816,16 +869,37 @@ app.get("/api/historial/expediente/:expedienteId", authMiddleware, async (req, r
     const result = await pool.query(`
       SELECT h.*, 
              ea.nombre AS etapa_anterior_nombre, 
-             en.nombre AS etapa_nueva_nombre,
-             u.nombre AS usuario_nombre
+             en.nombre AS etapa_nueva_nombre
       FROM historial_etapas h
       LEFT JOIN etapas_proceso ea ON h.etapa_anterior_id = ea.id
       LEFT JOIN etapas_proceso en ON h.etapa_nueva_id = en.id
-      LEFT JOIN usuarios u ON h.usuario_id = u.id
       WHERE h.expediente_id = $1
       ORDER BY h.fecha_cambio DESC
     `, [expedienteId]);
-    res.json(result.rows);
+
+    const usuarioIds = [...new Set(result.rows.map(r => r.usuario_id).filter(Boolean))];
+    let usuariosMap = {};
+    if (usuarioIds.length > 0) {
+      try {
+        const response = await fetch(`${MS_USUARIOS_URL}/api/usuarios?ids=${usuarioIds.join(',')}`);
+        if (response.ok) {
+          const usuarios = await response.json();
+          usuariosMap = usuarios.reduce((acc, u) => {
+            acc[u.id] = u;
+            return acc;
+          }, {});
+        }
+      } catch (err) {
+        console.warn('[ms-expedientes] No se pudo obtener usuarios desde ms-usuarios:', err.message);
+      }
+    }
+
+    const enriched = result.rows.map(row => ({
+      ...row,
+      usuario_nombre: usuariosMap[row.usuario_id]?.nombre_completo || usuariosMap[row.usuario_id]?.nombre || null
+    }));
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1072,25 +1146,14 @@ async function generarTareasPorEtapa(expedienteId, etapaId, pool) {
 
   // Buscar usuarios de esa area con ese rol
   // Conectar a db_usuarios para buscar
-  const usuariosDb = new (require('pg').Pool)({
-    user: process.env.DB_USER || "postgres",
-    host: process.env.DB_HOST || "db",
-    database: process.env.DB_NAME_USUARIOS || "db_usuarios",
-    password: process.env.DB_PASSWORD || "password123",
-    port: process.env.DB_PORT || 5432,
-  });
-
   try {
-    // Buscar usuarios del area con el rol especificado
-    const usuariosResult = await usuariosDb.query(`
-      SELECT u.id 
-      FROM db_usuarios.usuarios u
-      INNER JOIN db_usuarios.usuario_area ua ON u.id = ua.usuario_id
-      WHERE ua.area_id = $1 AND u.rol_id = $2 AND u.estado_activo = true
-    `, [area_id, etapa.rol_id]);
+    // Buscar usuarios del area con el rol especificado via ms-usuarios
+    const response = await fetch(`${MS_USUARIOS_URL}/api/usuarios?area_id=${area_id}&rol_id=${etapa.rol_id}`);
+    if (!response.ok) return;
+    const usuarios = await response.json();
 
     // Crear tarea para cada usuario
-    for (const usuario of usuariosResult.rows) {
+    for (const usuario of usuarios) {
       // Verificar si ya existe una tarea similar
       const existe = await pool.query(`
         SELECT id FROM tareas_asignadas 
@@ -1105,7 +1168,7 @@ async function generarTareasPorEtapa(expedienteId, etapaId, pool) {
       }
     }
   } finally {
-    await usuariosDb.end();
+    // no-op (no DB connection here)
   }
 }
 

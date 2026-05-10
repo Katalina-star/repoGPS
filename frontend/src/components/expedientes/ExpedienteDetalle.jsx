@@ -4,7 +4,9 @@ const ExpedienteDetalle = ({
   documentos = [],
   onCerrar,
   onAvanzar,
-  onDevolver
+  onDevolver,
+  onActualizarFechaTermino,
+  esAdmin = false
 }) => {
 
   const handleAvanzar = async () => {
@@ -33,6 +35,16 @@ const ExpedienteDetalle = ({
 
   if (!expediente) return null
 
+  const handleFechaTerminoChange = async (e) => {
+    const nuevaFecha = e.target.value
+    if (!onActualizarFechaTermino) return
+    try {
+      await onActualizarFechaTermino(expediente.id, nuevaFecha || null)
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
   return (
     <div className="modal-overlay" onClick={onCerrar}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -49,6 +61,18 @@ const ExpedienteDetalle = ({
             <p><strong>Descripción:</strong> {expediente.descripcion || 'Sin descripción'}</p>
             <p><strong>Fecha Creación:</strong> {new Date(expediente.fecha_creacion).toLocaleString()}</p>
             <p><strong>Fecha de término:</strong> {expediente.fecha_termino ? new Date(expediente.fecha_termino).toLocaleDateString() : '-'}</p>
+            {esAdmin && (
+              <div style={{ marginTop: '8px' }}>
+                <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '4px' }}>
+                  Editar fecha de término
+                </label>
+                <input
+                  type="date"
+                  value={expediente.fecha_termino ? new Date(expediente.fecha_termino).toISOString().slice(0, 10) : ''}
+                  onChange={handleFechaTerminoChange}
+                />
+              </div>
+            )}
           </div>
 
           <div className="exp-actions">
