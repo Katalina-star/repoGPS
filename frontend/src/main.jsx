@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { useAuth } from './context/useAuth'
 import App from './App.jsx'
 import Login from './Login.jsx'
@@ -25,7 +26,9 @@ function Root() {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
-      <Root />
+      <ThemeProvider>
+        <Root />
+      </ThemeProvider>
     </AuthProvider>
   </StrictMode>,
 )

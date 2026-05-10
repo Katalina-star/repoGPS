@@ -148,12 +148,12 @@ const UsuariosPanel = () => {
       </section>
 
       <section className="panel">
-        <div className="panel-top table-top">
+        <div className="panel-top">
           <div className="tabs">
             <button className={`tab-btn ${tabActiva === 'activos' ? 'active' : ''}`} onClick={() => { setTabActiva('activos'); limpiarBusqueda(); }}>Activos</button>
             <button className={`tab-btn ${tabActiva === 'inactivos' ? 'active' : ''}`} onClick={() => { setTabActiva('inactivos'); limpiarBusqueda(); }}>Inactivos</button>
           </div>
-          <div className="table-controls">
+          <div className="table-controls" style={{ marginLeft: 'auto' }}>
             <div className="search-wrapper">
               <span className="search-icon"></span>
               <input 
