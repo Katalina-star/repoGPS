@@ -18,7 +18,8 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
     abrirDetalle,
     cerrarDetalle,
     avanzarExpediente,
-    devolverExpediente
+    devolverExpediente,
+    actualizarFechaTermino
   } = useExpedientes()
   const { procesos, cargarProcesos } = useProcesos()
   const { cargarDisciplinas } = useDisciplinas()
@@ -378,19 +379,22 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
                         const ahora = Date.now()
                         if (exp.fecha_termino) {
                           const fechaTermino = new Date(exp.fecha_termino).getTime()
-                          const enPlazo = ahora <= fechaTermino
+                          const diffMs = fechaTermino - ahora
+                          const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                          const enPlazo = diffMs >= 0
                           return (
                             <span className={`sla-tag ${enPlazo ? 'sla-ok' : 'sla-warn'}`}>
-                              {enPlazo ? 'En plazo' : 'Atrasado'}
+                              {enPlazo ? `En plazo (${diffDias}d)` : `Atrasado (${Math.abs(diffDias)}d)`}
                             </span>
                           )
                         }
                         const fechaExp = exp.fecha_actualizacion || exp.fecha_creacion
                         const diasTranscurridos = Math.floor((ahora - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
+                        const restantes = Math.max(10 - diasTranscurridos, 0)
                         const enPlazo = diasTranscurridos <= 10
                         return (
                           <span className={`sla-tag ${enPlazo ? 'sla-ok' : 'sla-warn'}`}>
-                            {enPlazo ? 'En plazo' : 'Atrasado'}
+                            {enPlazo ? `En plazo (${restantes}d)` : `Atrasado (${diasTranscurridos - 10}d)`}
                           </span>
                         )
                       })()
@@ -416,6 +420,13 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
           onCerrar={cerrarDetalle}
           onAvanzar={avanzarExpediente}
           onDevolver={devolverExpediente}
+          onActualizarFechaTermino={async (id, fecha_termino) => {
+            const updated = await actualizarFechaTermino(id, fecha_termino)
+            if (updated) {
+              abrirDetalle({ ...expedienteDetalle, fecha_termino: updated.fecha_termino })
+            }
+          }}
+          esAdmin={esAdmin}
         />
       )}
     </>

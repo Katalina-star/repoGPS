@@ -8,7 +8,7 @@ export const useExpedientes = () => {
   const [documentos, setDocumentos] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const { get, post } = useApi()
+  const { get, post, put } = useApi()
 
   const cargarExpedientes = useCallback(async () => {
     setLoading(true)
@@ -58,7 +58,9 @@ export const useExpedientes = () => {
 
   const avanzarExpediente = useCallback(async (id, observacion) => {
     const data = await post(`/api/expedientes/${id}/avanzar`, { observacion })
-    if (data) {
+    if (data?.expediente) {
+      setExpedientes(prev => prev.map(e => (e.id === data.expediente.id ? data.expediente : e)))
+    } else if (data) {
       await cargarExpedientes()
     }
     return data
@@ -66,11 +68,21 @@ export const useExpedientes = () => {
 
   const devolverExpediente = useCallback(async (id, observacion) => {
     const data = await post(`/api/expedientes/${id}/devolver`, { observacion })
-    if (data) {
+    if (data?.expediente) {
+      setExpedientes(prev => prev.map(e => (e.id === data.expediente.id ? data.expediente : e)))
+    } else if (data) {
       await cargarExpedientes()
     }
     return data
   }, [post, cargarExpedientes])
+
+  const actualizarFechaTermino = useCallback(async (id, fecha_termino) => {
+    const data = await put(`/api/expedientes/${id}`, { fecha_termino })
+    if (data) {
+      setExpedientes(prev => prev.map(e => (e.id === data.id ? { ...e, fecha_termino: data.fecha_termino } : e)))
+    }
+    return data
+  }, [put])
 
   return {
     expedientes,
@@ -85,5 +97,6 @@ export const useExpedientes = () => {
     cerrarDetalle,
     avanzarExpediente,
     devolverExpediente
+    , actualizarFechaTermino
   }
 }

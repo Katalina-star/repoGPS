@@ -109,7 +109,26 @@ app.post("/api/usuarios", async (req, res) => {
 // GET /api/usuarios - Listar usuarios con API Composition
 app.get("/api/usuarios", async (req, res) => {
   try {
-    // 1. Obtener usuarios con sus área IDs (SIN JOIN a areas - esa tabla está en otra DB)
+    const { ids, area_id, rol_id } = req.query;
+    const idsArray = ids ? ids.split(',').map(id => Number(id)).filter(Boolean) : [];
+    const areaId = area_id ? Number(area_id) : null;
+    const rolId = rol_id ? Number(rol_id) : null;
+
+    const where = [];
+    const params = [];
+    if (idsArray.length > 0) {
+      params.push(idsArray);
+      where.push(`u.id = ANY($${params.length})`);
+    }
+    if (areaId) {
+      params.push(areaId);
+      where.push(`ua.area_id = $${params.length}`);
+    }
+    if (rolId) {
+      params.push(rolId);
+      where.push(`u.rol_id = $${params.length}`);
+    }
+
     const result = await pool.query(`
       SELECT 
         u.id, u.nombre_completo, u.correo, u.password_hash, u.estado_activo, u.rol_id,
@@ -118,9 +137,10 @@ app.get("/api/usuarios", async (req, res) => {
       FROM usuarios u
       INNER JOIN roles r ON u.rol_id = r.id
       LEFT JOIN usuario_area ua ON u.id = ua.usuario_id
+      ${where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''}
       GROUP BY u.id, r.nombre
       ORDER BY u.id ASC
-    `);
+    `, params);
 
     // 2. Para cada usuario, obtener los detalles de las áreas desde ms-mantenedor (API Composition)
     const usuariosConAreas = await Promise.all(
