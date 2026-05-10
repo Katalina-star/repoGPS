@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from './context/useAuth'
+import { ThemeProvider } from './context/ThemeContext'
 import Sidebar from './components/layout/Sidebar'
 import Content from './components/layout/Content'
 import Dashboard from './components/dashboard/Dashboard'
@@ -115,7 +116,11 @@ const AppContent = () => {
 }
 
 const App = () => {
-  return <AppContent />
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  )
 }
 
 export default App

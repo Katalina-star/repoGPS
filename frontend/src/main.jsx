@@ -6,6 +6,12 @@ import { useAuth } from './context/useAuth'
 import App from './App.jsx'
 import Login from './Login.jsx'
 
+// Initialize theme from localStorage before React renders
+const savedTheme = localStorage.getItem('theme')
+if (savedTheme) {
+  document.documentElement.setAttribute('data-theme', savedTheme)
+}
+
 function Root() {
   const { user, loading } = useAuth()
 
