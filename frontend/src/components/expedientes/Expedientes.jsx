@@ -31,7 +31,8 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
     proceso_id: '',
     disciplina_id: '',
     titulo: '',
-    descripcion: ''
+    descripcion: '',
+    fecha_termino: ''
   })
   const [etapasProceso, setEtapasProceso] = useState([])
   const [filtroEstado, setFiltroEstado] = useState(filtroEstadoInicial)
@@ -166,7 +167,7 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
     try {
       await crearExpediente(formData)
       setMostrarForm(false)
-      setFormData({ contratista_id: '', area_id: '', proceso_id: '', disciplina_id: '', titulo: '', descripcion: '' })
+      setFormData({ contratista_id: '', area_id: '', proceso_id: '', disciplina_id: '', titulo: '', descripcion: '', fecha_termino: '' })
       setAreasFiltradas([])
       setDisciplinasFiltradas([])
       setProcesosFiltrados([])
@@ -192,8 +193,15 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
       .filter(e => {
         if (!filtroSla || filtroSla === 'todos') return true
         if (e.estado !== 'En Revision') return false
+        const ahora = Date.now()
+        if (e.fecha_termino) {
+          const fechaTermino = new Date(e.fecha_termino).getTime()
+          if (filtroSla === 'atrasado') return ahora > fechaTermino
+          if (filtroSla === 'en_plazo') return ahora <= fechaTermino
+          return true
+        }
         const fechaExp = e.fecha_actualizacion || e.fecha_creacion
-        const diasTranscurridos = Math.floor((Date.now() - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
+        const diasTranscurridos = Math.floor((ahora - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
         if (filtroSla === 'atrasado') return diasTranscurridos > 10
         if (filtroSla === 'en_plazo') return diasTranscurridos <= 10
         return true
@@ -289,6 +297,15 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
                 <textarea value={formData.descripcion} onChange={e => setFormData({ ...formData, descripcion: e.target.value })} />
               </div>
 
+              <div className="field">
+                <label>Fecha de término (opcional)</label>
+                <input
+                  type="date"
+                  value={formData.fecha_termino}
+                  onChange={e => setFormData({ ...formData, fecha_termino: e.target.value })}
+                />
+              </div>
+
               {formData.proceso_id && etapasProceso.length > 0 && (
                 <div className="field">
                   <label>Etapa Inicial (se asigna automáticamente)</label>
@@ -358,8 +375,18 @@ const ExpedientesPanel = ({ user, filtroEstadoInicial = 'todos', filtroSlaInicia
                   <td>
                     {exp.estado === 'En Revision' ? (
                       (() => {
+                        const ahora = Date.now()
+                        if (exp.fecha_termino) {
+                          const fechaTermino = new Date(exp.fecha_termino).getTime()
+                          const enPlazo = ahora <= fechaTermino
+                          return (
+                            <span className={`sla-tag ${enPlazo ? 'sla-ok' : 'sla-warn'}`}>
+                              {enPlazo ? 'En plazo' : 'Atrasado'}
+                            </span>
+                          )
+                        }
                         const fechaExp = exp.fecha_actualizacion || exp.fecha_creacion
-                        const diasTranscurridos = Math.floor((Date.now() - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
+                        const diasTranscurridos = Math.floor((ahora - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
                         const enPlazo = diasTranscurridos <= 10
                         return (
                           <span className={`sla-tag ${enPlazo ? 'sla-ok' : 'sla-warn'}`}>

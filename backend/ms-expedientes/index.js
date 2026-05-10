@@ -553,7 +553,7 @@ app.get("/api/expedientes/:id", authMiddleware, async (req, res) => {
 });
 
 app.post("/api/expedientes", async (req, res) => {
-  const { proceso_id, disciplina_id, subtipo_id, titulo, descripcion } = req.body;
+  const { proceso_id, disciplina_id, subtipo_id, titulo, descripcion, fecha_termino } = req.body;
   try {
     // Obtener la primera etapa del proceso para asignarla automáticamente
     const etapaResult = await pool.query(
@@ -564,9 +564,9 @@ app.post("/api/expedientes", async (req, res) => {
     const etapa_actual_id = etapaResult.rows[0]?.id || null;
     
     const result = await pool.query(
-      `INSERT INTO expedientes (proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion]
+      `INSERT INTO expedientes (proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion, fecha_termino)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion, fecha_termino || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

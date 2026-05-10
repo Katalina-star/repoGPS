@@ -36,6 +36,7 @@ CREATE TABLE expedientes (
     descripcion TEXT,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_termino DATE,
     estado_activo BOOLEAN DEFAULT true
 );
 

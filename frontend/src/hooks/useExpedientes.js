@@ -30,7 +30,8 @@ export const useExpedientes = () => {
       proceso_id: Number(expediente.proceso_id),
       disciplina_id: Number(expediente.disciplina_id),
       titulo: expediente.titulo,
-      descripcion: expediente.descripcion
+      descripcion: expediente.descripcion,
+      fecha_termino: expediente.fecha_termino || null
     })
     return data
   }, [post])
