@@ -12,7 +12,7 @@ const EtapasPanel = () => {
     proceso_id: '',
     nombre: '',
     orden: '',
-    es_final: false,
+    tipo_etapa: '',
     tipo_tarea: '',
     rol_id: ''
   })
@@ -31,7 +31,7 @@ const EtapasPanel = () => {
       proceso_id: '',
       nombre: '',
       orden: '',
-      es_final: false,
+      tipo_etapa: '',
       tipo_tarea: '',
       rol_id: ''
     })
@@ -44,16 +44,24 @@ const EtapasPanel = () => {
       alert('Tipo de tarea y rol responsable deben definirse juntos')
       return
     }
+    const payload = {
+      proceso_id: Number(formData.proceso_id),
+      nombre: formData.nombre,
+      orden: Number(formData.orden),
+      tipo_etapa: formData.tipo_etapa || null,
+      tipo_tarea: formData.tipo_tarea || null,
+      rol_id: formData.rol_id ? Number(formData.rol_id) : null
+    }
     try {
       if (editandoId) {
-        await actualizarEtapa(editandoId, formData)
+        await actualizarEtapa(editandoId, payload)
       } else {
-        await crearEtapa(formData)
+        await crearEtapa(payload)
       }
       limpiarFormulario()
       cargarEtapas()
     } catch (err) {
-      alert(err.message)
+      alert(err.response?.data?.error || err.message)
     }
   }
 
@@ -62,7 +70,7 @@ const EtapasPanel = () => {
       proceso_id: String(e.proceso_id),
       nombre: e.nombre,
       orden: String(e.orden),
-      es_final: e.es_final,
+      tipo_etapa: e.tipo_etapa || '',
       tipo_tarea: e.tipo_tarea || '',
       rol_id: String(e.rol_id || '')
     })
@@ -127,6 +135,15 @@ const EtapasPanel = () => {
             <input type="number" min="1" value={formData.orden} onChange={e => setFormData({ ...formData, orden: e.target.value })} required />
           </div>
           <div className="field">
+            <label>Tipo de etapa</label>
+            <select value={formData.tipo_etapa} onChange={e => setFormData({ ...formData, tipo_etapa: e.target.value })}>
+              <option value="">No aplica</option>
+              <option value="inicio">Inicio</option>
+              <option value="desarrollo">Desarrollo</option>
+              <option value="final">Final</option>
+            </select>
+          </div>
+          <div className="field">
             <label>Tipo de tarea</label>
             <select value={formData.tipo_tarea} onChange={e => setFormData({ ...formData, tipo_tarea: e.target.value })}>
               <option value="">Sin tarea</option>
@@ -148,12 +165,7 @@ const EtapasPanel = () => {
               ))}
             </select>
           </div>
-          <div className="field checkbox-field">
-            <label>
-              <input type="checkbox" checked={formData.es_final} onChange={e => setFormData({ ...formData, es_final: e.target.checked })} />
-              Etapa Final (Cierra expediente)
-            </label>
-          </div>
+          
         </form>
       </section>
 
@@ -188,9 +200,9 @@ const EtapasPanel = () => {
                 <th>Nombre</th>
                 <th>Orden</th>
                 <th>Proceso</th>
+                <th>Tipo Etapa</th>
                 <th>Tipo Tarea</th>
                 <th>Rol</th>
-                <th>Es Final</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -203,9 +215,9 @@ const EtapasPanel = () => {
                     <td>{etapa.nombre}</td>
                     <td>{etapa.orden}</td>
                     <td>{proc?.nombre || 'Sin proceso'}</td>
+                    <td>{etapa.tipo_etapa || '-'}</td>
                     <td>{etapa.tipo_tarea || '-'}</td>
                     <td>{rol?.nombre || '-'}</td>
-                    <td>{etapa.es_final ? '✓' : 'No'}</td>
                     <td>
                       <button className="btn-mini btn-edit" onClick={() => handleEditar(etapa)}>Editar</button>
                       <button className="btn-mini btn-danger" onClick={() => etapa.estado_activo ? handleEliminar(etapa.id) : handleReactivar(etapa.id)}>{etapa.estado_activo ? 'Borrar' : 'Reactivar'}</button>

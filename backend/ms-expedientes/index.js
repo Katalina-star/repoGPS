@@ -82,6 +82,7 @@ function isMissingColumnError(err, colName) {
 }
 
 const TIPOS_TAREA_VALIDOS = new Set(["revision", "aprobacion", "visacion"]);
+const TIPOS_ETAPA_VALIDOS = new Set(["inicio", "desarrollo", "final"]);
 
 function normalizarTipoTarea(tipo_tarea) {
   if (!tipo_tarea) return null;
@@ -92,7 +93,16 @@ function normalizarTipoTarea(tipo_tarea) {
   return normalizado;
 }
 
-async function validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id }, etapaId = null) {
+function normalizarTipoEtapa(tipo_etapa) {
+  if (!tipo_etapa) return null;
+  const normalizado = String(tipo_etapa).trim().toLowerCase();
+  if (!TIPOS_ETAPA_VALIDOS.has(normalizado)) {
+    return null;
+  }
+  return normalizado;
+}
+
+async function validarReglasEtapa({ proceso_id, orden, tipo_etapa, tipo_tarea, rol_id }, etapaId = null) {
   const procesoIdNum = Number(proceso_id);
   const ordenNum = Number(orden);
   const rolIdNum = rol_id ? Number(rol_id) : null;
@@ -105,12 +115,14 @@ async function validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol
     throw new Error("orden debe ser un entero mayor a 0");
   }
 
-  const tipoNormalizado = tipo_tarea ? normalizarTipoTarea(tipo_tarea) : null;
-  if (tipo_tarea && !tipoNormalizado) {
+  const tipoEtapaNormalizado = normalizarTipoEtapa(tipo_etapa);
+
+  const tipoTareaNormalizado = tipo_tarea ? normalizarTipoTarea(tipo_tarea) : null;
+  if (tipo_tarea && !tipoTareaNormalizado) {
     throw new Error("tipo_tarea inválido (use: revision, aprobacion o visacion)");
   }
 
-  if ((tipoNormalizado && !rolIdNum) || (!tipoNormalizado && rolIdNum)) {
+  if ((tipoTareaNormalizado && !rolIdNum) || (!tipoTareaNormalizado && rolIdNum)) {
     throw new Error("tipo_tarea y rol_id deben enviarse juntos");
   }
 
@@ -135,26 +147,136 @@ async function validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol
     throw new Error("Ya existe una etapa activa con ese orden para el proceso");
   }
 
-  if (Boolean(es_final)) {
+  // Invariante: solo 1 etapa con tipo_etapa='inicio' por proceso
+  if (tipoEtapaNormalizado === 'inicio') {
+    const inicioExistente = await pool.query(
+      `SELECT id FROM etapas_proceso
+       WHERE proceso_id = $1
+         AND tipo_etapa = 'inicio'
+         AND estado_activo = true
+         AND ($2::int IS NULL OR id <> $2)
+       LIMIT 1`,
+      [procesoIdNum, etapaId]
+    );
+    if (inicioExistente.rows.length > 0) {
+      throw new Error("Solo puede existir una etapa de tipo 'inicio' por proceso");
+    }
+  }
+
+  // Invariante: solo 1 etapa con tipo_etapa='final' por proceso
+  if (tipoEtapaNormalizado === 'final') {
     const finalExistente = await pool.query(
       `SELECT id FROM etapas_proceso
        WHERE proceso_id = $1
-         AND es_final = true
+         AND tipo_etapa = 'final'
          AND estado_activo = true
          AND ($2::int IS NULL OR id <> $2)
        LIMIT 1`,
       [procesoIdNum, etapaId]
     );
     if (finalExistente.rows.length > 0) {
-      throw new Error("Ya existe una etapa final activa para este proceso");
+      throw new Error("Solo puede existir una etapa de tipo 'final' por proceso");
     }
   }
 
   return {
     proceso_id: procesoIdNum,
     orden: ordenNum,
-    es_final: Boolean(es_final),
-    tipo_tarea: tipoNormalizado,
+    tipo_etapa: tipoEtapaNormalizado,
+    tipo_tarea: tipoTareaNormalizado,
+    rol_id: rolIdNum
+  };
+}
+
+// Validar reglas de etapa con cliente (transaction-aware)
+// Uses tipo_etapa only - DB unique indexes enforce uniqueness
+async function validarReglasEtapaTransacted({ proceso_id, orden, tipo_etapa, tipo_tarea, rol_id }, etapaId = null, client) {
+  const procesoIdNum = Number(proceso_id);
+  const ordenNum = Number(orden);
+  const rolIdNum = rol_id ? Number(rol_id) : null;
+
+  if (!Number.isInteger(procesoIdNum) || procesoIdNum <= 0) {
+    throw new Error("proceso_id inválido");
+  }
+
+  if (!Number.isInteger(ordenNum) || ordenNum <= 0) {
+    throw new Error("orden debe ser un entero mayor a 0");
+  }
+
+  const tipoEtapaNormalizado = normalizarTipoEtapa(tipo_etapa);
+
+  const tipoTareaNormalizado = tipo_tarea ? normalizarTipoTarea(tipo_tarea) : null;
+  if (tipo_tarea && !tipoTareaNormalizado) {
+    throw new Error("tipo_tarea inválido (use: revision, aprobacion o visacion)");
+  }
+
+  if ((tipoTareaNormalizado && !rolIdNum) || (!tipoTareaNormalizado && rolIdNum)) {
+    throw new Error("tipo_tarea y rol_id deben enviarse juntos");
+  }
+
+  // Validar proceso existe
+  const procesoExiste = await client.query(
+    "SELECT id FROM procesos WHERE id = $1",
+    [procesoIdNum]
+  );
+  if (procesoExiste.rows.length === 0) {
+    throw new Error("Proceso no encontrado");
+  }
+
+  // Validar orden duplicado (con lock ya adquirido en el proceso)
+  if (ordenNum) {
+    const ordenDuplicado = await client.query(
+      `SELECT id FROM etapas_proceso
+       WHERE proceso_id = $1
+         AND orden = $2
+         AND estado_activo = true
+         AND ($3::int IS NULL OR id <> $3)
+       LIMIT 1`,
+      [procesoIdNum, ordenNum, etapaId]
+    );
+    if (ordenDuplicado.rows.length > 0) {
+      throw new Error("Ya existe una etapa activa con ese orden para el proceso");
+    }
+  }
+
+  // DB-level unique indexes handle tipo_etapa uniqueness
+  // Additional check for tipo_etapa 'inicio'
+  if (tipoEtapaNormalizado === 'inicio') {
+    const inicioExistente = await client.query(
+      `SELECT id FROM etapas_proceso
+       WHERE proceso_id = $1
+         AND tipo_etapa = 'inicio'
+         AND estado_activo = true
+         AND ($2::int IS NULL OR id <> $2)
+       LIMIT 1`,
+      [procesoIdNum, etapaId]
+    );
+    if (inicioExistente.rows.length > 0) {
+      throw new Error("Solo puede existir una etapa de tipo 'inicio' por proceso");
+    }
+  }
+
+  // Additional check for tipo_etapa 'final'
+  if (tipoEtapaNormalizado === 'final') {
+    const finalExistente = await client.query(
+      `SELECT id FROM etapas_proceso
+       WHERE proceso_id = $1
+         AND tipo_etapa = 'final'
+         AND estado_activo = true
+         AND ($2::int IS NULL OR id <> $2)
+       LIMIT 1`,
+      [procesoIdNum, etapaId]
+    );
+    if (finalExistente.rows.length > 0) {
+      throw new Error("Solo puede existir una etapa de tipo 'final' por proceso");
+    }
+  }
+
+  return {
+    proceso_id: procesoIdNum,
+    orden: ordenNum,
+    tipo_etapa: tipoEtapaNormalizado,
+    tipo_tarea: tipoTareaNormalizado,
     rol_id: rolIdNum
   };
 }
@@ -367,13 +489,13 @@ app.patch("/api/procesos/:id/estado", async (req, res) => {
 });
 
 // ============================================
-// ETAPAS PROCESO
+// ETAPAS PROCESO - with DB transaction protection
 // ============================================
 
 app.get("/api/etapas-proceso", async (req, res) => {
   try {
     const { incluir_inactivos } = req.query;
-    let query = "SELECT * FROM etapas_proceso";
+    let query = "SELECT id, proceso_id, nombre, orden, tipo_etapa, es_final, tipo_tarea, rol_id, estado_activo FROM etapas_proceso";
     let conditions = [];
     
     if (incluir_inactivos !== 'true') {
@@ -418,45 +540,122 @@ app.get("/api/etapas-proceso/:id", async (req, res) => {
   }
 });
 
+// POST /api/etapas-proceso - with transaction and SELECT FOR UPDATE
 app.post("/api/etapas-proceso", async (req, res) => {
-  const { proceso_id, nombre, orden, es_final, tipo_tarea, rol_id } = req.body;
+  const { proceso_id, nombre, orden, tipo_etapa, tipo_tarea, rol_id } = req.body;
+  const client = await pool.connect();
+  
   try {
-    const validado = await validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id });
-    const result = await pool.query(
-      "INSERT INTO etapas_proceso (proceso_id, nombre, orden, es_final, tipo_tarea, rol_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [validado.proceso_id, nombre, validado.orden, validado.es_final, validado.tipo_tarea, validado.rol_id]
+    await client.query('BEGIN');
+    
+    // Lock proceso rows to serialize changes
+    const procesoLock = await client.query(
+      "SELECT id FROM procesos WHERE id = $1 FOR UPDATE",
+      [proceso_id]
     );
+    if (procesoLock.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: "Proceso no encontrado" });
+    }
+    
+    const validado = await validarReglasEtapaTransacted({ proceso_id, orden, tipo_etapa, tipo_tarea, rol_id }, null, client);
+    
+    const result = await client.query(
+      "INSERT INTO etapas_proceso (proceso_id, nombre, orden, tipo_etapa, tipo_tarea, rol_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [validado.proceso_id, nombre, validado.orden, validado.tipo_etapa, validado.tipo_tarea, validado.rol_id]
+    );
+    
+    await client.query('COMMIT');
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    await client.query('ROLLBACK');
+    const isInvariant = err.message.includes("Solo puede existir") || err.message.includes("Ya existe una etapa activa con ese orden");
+    res.status(isInvariant ? 409 : 400).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
+// PUT /api/etapas-proceso/:id - with transaction and SELECT FOR UPDATE
 app.put("/api/etapas-proceso/:id", async (req, res) => {
   const { id } = req.params;
-  const { proceso_id, nombre, orden, es_final, tipo_tarea, rol_id } = req.body;
+  const { proceso_id, nombre, orden, tipo_etapa, tipo_tarea, rol_id } = req.body;
+  const client = await pool.connect();
+  
   try {
-    const validado = await validarReglasEtapa({ proceso_id, orden, es_final, tipo_tarea, rol_id }, Number(id));
-    const result = await pool.query(
-      "UPDATE etapas_proceso SET proceso_id = $1, nombre = $2, orden = $3, es_final = $4, tipo_tarea = $5, rol_id = $6 WHERE id = $7 RETURNING *",
-      [validado.proceso_id, nombre, validado.orden, validado.es_final, validado.tipo_tarea, validado.rol_id, id]
+    await client.query('BEGIN');
+    
+    // Lock proceso rows to serialize changes
+    const procesoLock = await client.query(
+      "SELECT id FROM procesos WHERE id = $1 FOR UPDATE",
+      [proceso_id]
     );
+    if (procesoLock.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: "Proceso no encontrado" });
+    }
+    
+    const validado = await validarReglasEtapaTransacted({ proceso_id, orden, tipo_etapa, tipo_tarea, rol_id }, Number(id), client);
+    
+    const result = await client.query(
+      "UPDATE etapas_proceso SET proceso_id = $1, nombre = $2, orden = $3, tipo_etapa = $4, tipo_tarea = $5, rol_id = $6 WHERE id = $7 RETURNING *",
+      [validado.proceso_id, nombre, validado.orden, validado.tipo_etapa, validado.tipo_tarea, validado.rol_id, id]
+    );
+    
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: "Etapa no encontrada" });
     }
+    
+    await client.query('COMMIT');
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    await client.query('ROLLBACK');
+    const isInvariant = err.message.includes("Solo puede existir") || err.message.includes("Ya existe una etapa activa con ese orden");
+    res.status(isInvariant ? 409 : 400).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
+// DELETE /api/etapas-proceso/:id - with transaction and SELECT FOR UPDATE
 app.delete("/api/etapas-proceso/:id", async (req, res) => {
   const { id } = req.params;
+  const client = await pool.connect();
+  
   try {
-    await pool.query("UPDATE etapas_proceso SET estado_activo = false WHERE id = $1", [id]);
+    await client.query('BEGIN');
+    
+    const etapa = await client.query("SELECT * FROM etapas_proceso WHERE id = $1", [id]);
+    if (etapa.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: "Etapa no encontrada" });
+    }
+    
+    const { tipo_etapa, proceso_id } = etapa.rows[0];
+    
+    // DB-level protection via partial unique index handles tipo_etapa uniqueness
+    // Additional check: don't delete if it's the only active 'inicio' or 'final'
+    if (tipo_etapa === 'inicio' || tipo_etapa === 'final') {
+      const otrasEtapas = await client.query(
+        `SELECT id FROM etapas_proceso 
+         WHERE proceso_id = $1 AND tipo_etapa = $2 AND estado_activo = true AND id <> $3 LIMIT 1`,
+        [proceso_id, tipo_etapa, id]
+      );
+      if (otrasEtapas.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: `No se puede eliminar: debe existir al menos una etapa '${tipo_etapa}' por proceso` });
+      }
+    }
+    
+    await client.query("UPDATE etapas_proceso SET estado_activo = false WHERE id = $1", [id]);
+    await client.query('COMMIT');
     res.json({ message: "Etapa eliminada lógicamente" });
   } catch (err) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
