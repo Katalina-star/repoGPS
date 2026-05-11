@@ -129,17 +129,6 @@ const UsuariosPanel = () => {
               {roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
             </select>
           </div>
-          <div className="field">
-            <label>Área</label>
-            <select
-              value={formData.area_id}
-              onChange={e => setFormData({ ...formData, area_id: e.target.value })}
-              required
-            >
-              <option value="">Seleccione...</option>
-              {areas.map(a => <option key={a.id} value={a.id}>{a.nombre} ({a.contratista_nombre})</option>)}
-            </select>
-          </div>
           <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
             <button type="submit" className="btn btn-primary">{editandoId ? 'Actualizar' : 'Crear'}</button>
             {editandoId && <button type="button" className="btn btn-secondary" onClick={limpiarFormulario}>Cancelar</button>}
@@ -173,7 +162,6 @@ const UsuariosPanel = () => {
                 <th>Nombre</th>
                 <th>Correo</th>
                 <th>Rol</th>
-                <th>Área</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -183,7 +171,6 @@ const UsuariosPanel = () => {
                   <td>{u.nombre_completo}</td>
                   <td>{u.correo}</td>
                   <td><span className="role-tag">{u.rol_nombre}</span></td>
-                  <td>{u.area_nombre || 'No asignada'}</td>
                   <td>
                     <button className="btn-mini btn-edit" onClick={() => handleEditar(u)}>Editar</button>
                     <button className="btn-mini btn-danger" onClick={() => handleCambiarEstado(u.id, !u.estado_activo)}>{u.estado_activo ? 'Borrar' : 'Reactivar'}</button>
