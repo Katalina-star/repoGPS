@@ -173,6 +173,7 @@ const AreasPanel = () => {
             </div>
           </div>
         </div>
+        <div className="hint-bar">Click en un área para asignar usuarios</div>
         <div className="table-wrap">
           <table className="users-table">
             <thead>
