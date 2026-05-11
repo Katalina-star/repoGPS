@@ -50,7 +50,7 @@ const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
 
   const enRevisionTotal = stats.enPlazo + stats.atrasado
 
-  const areaLabel = user?.area_nombre || 'Mi Área'
+  const areaLabel = user?.area_nombre || (user?.area_id ? `Área ${user.area_id}` : 'Mi Área')
   const heading = esAdmin
     ? 'Panel de Control'
     : `Panel de Control de Mi Área: ${areaLabel}`
