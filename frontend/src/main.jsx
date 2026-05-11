@@ -1,11 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import { AuthProvider } from './context/AuthContext'
-import { ThemeProvider } from './context/ThemeContext'
-import { useAuth } from './context/useAuth'
+import { ThemeProvider } from './context/ThemeContext.jsx'
 import App from './App.jsx'
-import Login from './Login.jsx'
 
 // Initialize theme from localStorage before React renders
 const savedTheme = localStorage.getItem('theme')
@@ -13,24 +12,14 @@ if (savedTheme) {
   document.documentElement.setAttribute('data-theme', savedTheme)
 }
 
-function Root() {
-  const { user, loading } = useAuth()
-
-  if (loading) {
-    return <div className="loading">Cargando...</div>
-  }
-
-  return user ? <App /> : <Login />
-}
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <ThemeProvider>
-        <Root />
-      </ThemeProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>,
 )
-
-export default Root

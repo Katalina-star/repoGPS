@@ -1,4 +1,8 @@
-const Sidebar = ({ seccionActual, onCambiarSeccion, onLogout, menuItems = [], titulos = {}, usuario = {} }) => {
+import { Link, useLocation } from 'react-router-dom'
+
+const Sidebar = ({ seccionActual, onLogout, menuItems = [], titulos = {}, usuario = {} }) => {
+  const location = useLocation()
+
   // Categorías para el menú admin
   const categoriasAdmin = {
     'Gestión': ['dashboard', 'usuarios', 'contratistas', 'areas', 'disciplinas'],
@@ -25,6 +29,12 @@ const Sidebar = ({ seccionActual, onCambiarSeccion, onLogout, menuItems = [], ti
     return acc
   }, {})
 
+  // Función para obtener la ruta basada en el item
+  const getRuta = (id) => {
+    if (id === 'dashboard') return '/'
+    return `/${id}`
+  }
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -39,15 +49,21 @@ const Sidebar = ({ seccionActual, onCambiarSeccion, onLogout, menuItems = [], ti
         {Object.entries(filteredCategorias).map(([categoria, items]) => (
           <div key={categoria} className="nav-categoria">
             <span className="nav-title">{categoria}</span>
-            {items.map(id => (
-              <button
-                key={id}
-                className={`nav-item ${seccionActual === id ? 'active' : ''}`}
-                onClick={() => onCambiarSeccion(id)}
-              >
-                {titulos[id] || id}
-              </button>
-            ))}
+            {items.map(id => {
+              const ruta = getRuta(id)
+              const isActive = location.pathname === ruta ||
+                (id === 'dashboard' && location.pathname === '/')
+
+              return (
+                <Link
+                  key={id}
+                  to={ruta}
+                  className={`nav-item ${isActive ? 'active' : ''}`}
+                >
+                  {titulos[id] || id}
+                </Link>
+              )
+            })}
           </div>
         ))}
       </nav>
