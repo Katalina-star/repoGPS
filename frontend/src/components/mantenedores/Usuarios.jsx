@@ -5,10 +5,8 @@ const UsuariosPanel = () => {
   const {
     usuarios,
     roles,
-    areas,
     cargarUsuarios,
     cargarRoles,
-    cargarAreas,
     crearUsuario,
     actualizarUsuario,
     cambiarEstado
@@ -26,8 +24,8 @@ const UsuariosPanel = () => {
   const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => {
-    Promise.all([cargarUsuarios(), cargarRoles(), cargarAreas()])
-  }, [cargarUsuarios, cargarRoles, cargarAreas])
+    Promise.all([cargarUsuarios(), cargarRoles()])
+  }, [cargarUsuarios, cargarRoles])
 
   const limpiarBusqueda = () => setBusqueda('')
 
