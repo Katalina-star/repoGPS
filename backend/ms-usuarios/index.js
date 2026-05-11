@@ -351,6 +351,7 @@ app.post("/api/logout", (req, res) => {
   res.json({ message: "Sesión cerrada correctamente" });
 });
 
+// Endpoint de login - valida credenciales y retorna token con datos del usuario
 app.post("/api/login", async (req, res) => {
   const { correo, password } = req.body;
 
