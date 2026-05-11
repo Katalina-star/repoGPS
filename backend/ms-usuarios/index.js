@@ -386,6 +386,7 @@ app.post("/api/login", async (req, res) => {
     // Generar JWT con area_id
     // Obtener el área principal del usuario (primera asignada)
     let areaId = null;
+    let areaNombre = null;
     try {
       const areaResult = await pool.query(
         "SELECT area_id FROM usuario_area WHERE usuario_id = $1 LIMIT 1",
@@ -393,9 +394,16 @@ app.post("/api/login", async (req, res) => {
       );
       if (areaResult.rows.length > 0) {
         areaId = areaResult.rows[0].area_id;
+        // Obtener nombre del área desde ms-mantenedor
+        if (areaId) {
+          const area = await fetchAreaById(areaId);
+          if (area) {
+            areaNombre = area.nombre;
+          }
+        }
       }
     } catch (err) {
-      console.error("Error al obtener area_id:", err.message);
+      console.error("Error al obtener area:", err.message);
     }
 
     const token = jwt.sign(
@@ -415,6 +423,7 @@ app.post("/api/login", async (req, res) => {
         rol_id: usuario.rol_id,
         rol_nombre: usuario.rol_nombre,
         area_id: areaId,
+        area_nombre: areaNombre,
       },
     });
   } catch (err) {
