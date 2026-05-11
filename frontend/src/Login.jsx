@@ -96,7 +96,7 @@ function Login() {
             <span className="login-tag">Sistema de Gestión</span>
             <h2>Bienvenida de vuelta</h2>
             <p>
-              Ingresa con tu correo y contrasena para acceder al panel
+              Ingresa con tu correo y contraseña para acceder al panel
               administrativo.
             </p>
           </div>
@@ -132,7 +132,7 @@ function Login() {
               required
             />
 
-            <label>Contrasena</label>
+            <label>Contraseña</label>
             <input
               type="password"
               placeholder="••••••••"
