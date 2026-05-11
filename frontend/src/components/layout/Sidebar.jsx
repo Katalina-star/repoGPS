@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 
-const Sidebar = ({ seccionActual, onLogout, menuItems = [], titulos = {}, usuario = {} }) => {
+const Sidebar = ({ onLogout, menuItems = [], titulos = {}, usuario = {} }) => {
   const location = useLocation()
 
   // Categorías para el menú admin
