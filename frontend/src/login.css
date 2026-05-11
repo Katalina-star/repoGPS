@@ -68,7 +68,7 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
   top: -60px;
-  right: -120px;
+  right: 40px;
 }
 
 .login-left::after {
