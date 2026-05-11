@@ -121,6 +121,8 @@ body {
   cursor: pointer;
   font-size: 0.95rem;
   transition: all 0.2s;
+  text-decoration: none;
+  display: block;
 }
 
 .nav-item:hover { background-color: #1e293b; color: white; }

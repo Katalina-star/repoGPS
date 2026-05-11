@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from './context/useAuth'
 import { ThemeProvider } from './context/ThemeContext.jsx'
 import Sidebar from './components/layout/Sidebar'
@@ -50,6 +50,19 @@ const rutaASeccion = {
   '/bandeja': 'bandeja'
 }
 
+// Wrapper para Expedientes que lee filtros de la URL
+const ExpedientesWrapper = ({ user }) => {
+  const [searchParams] = useSearchParams()
+  const filtroEstadoInicial = searchParams.get('estado') || 'todos'
+  const filtroSlaInicial = searchParams.get('sla') || 'todos'
+
+  return <ExpedientesPanel
+    user={user}
+    filtroEstadoInicial={filtroEstadoInicial}
+    filtroSlaInicial={filtroSlaInicial}
+  />
+}
+
 const SidebarLayout = () => {
   const location = useLocation()
   const { user, logout } = useAuth()
@@ -82,7 +95,7 @@ const SidebarLayout = () => {
           <Route path="categorias" element={<CategoriasPanel />} />
           <Route path="procesos" element={<ProcesosPanel />} />
           <Route path="etapas" element={<EtapasPanel />} />
-          <Route path="expedientes" element={<ExpedientesPanel user={user} />} />
+          <Route path="expedientes" element={<ExpedientesWrapper user={user} />} />
           <Route path="bandeja" element={<BandejaTareas user={user} />} />
         </Routes>
       </Content>

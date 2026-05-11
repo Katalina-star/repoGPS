@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useExpedientes } from '../../hooks/useExpedientes'
 
-const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
+const Dashboard = ({ user, esAdmin = true }) => {
+  const navigate = useNavigate()
   const { expedientes, cargarExpedientes } = useExpedientes()
 
   useEffect(() => {
@@ -28,7 +30,7 @@ const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
   expedientesFiltrados.forEach(exp => {
     const fechaExp = exp.fecha_actualizacion || exp.fecha_creacion
     const diasTranscurridos = Math.floor((ahora - new Date(fechaExp)) / (1000 * 60 * 60 * 24))
-    
+
     if (exp.estado === 'Terminado') {
       stats.terminado++
     } else if (exp.estado === 'En Desarrollo') {
@@ -45,7 +47,11 @@ const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
   })
 
   const handleClick = (estado, sla = 'todos') => {
-    if (onSelectFiltro) onSelectFiltro({ estado, sla })
+    // Navegar a expedientes y pasar los filtros como query params
+    const params = new URLSearchParams()
+    if (estado !== 'todos') params.set('estado', estado)
+    if (sla !== 'todos') params.set('sla', sla)
+    navigate(`/expedientes?${params.toString()}`)
   }
 
   const enRevisionTotal = stats.enPlazo + stats.atrasado
@@ -60,7 +66,7 @@ const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
       <h2 style={{ marginBottom: '24px', color: 'var(--text-main)' }}>
         {heading}
       </h2>
-      
+
       <div className="dashboard-grid">
         <button type="button" className="dashboard-card" style={{ borderLeftColor: '#64748b' }} onClick={() => handleClick('todos')}>
           <div className="dashboard-value" style={{ color: '#64748b' }}>{stats.total}</div>
@@ -73,16 +79,16 @@ const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
         <div className="dashboard-card" style={{ borderLeftColor: '#3b82f6' }}>
           <button type="button" className="dashboard-card-inner" onClick={() => handleClick('En Desarrollo', 'todos')}>
             <div className="dashboard-value" style={{ color: '#3b82f6' }}>{enRevisionTotal}</div>
-          <div className="dashboard-label">En Desarrollo</div>
-        </button>
-          <div className="dashboard-substats">
-            <button type="button" className="dashboard-chip chip-ok" onClick={() => handleClick('En Desarrollo', 'en_plazo')}>
-              En plazo: {stats.enPlazo}
-            </button>
-            <button type="button" className="dashboard-chip chip-warn" onClick={() => handleClick('En Desarrollo', 'atrasado')}>
-              Atrasado: {stats.atrasado}
-            </button>
-          </div>
+            <div className="dashboard-label">En Desarrollo</div>
+          </button>
+            <div className="dashboard-substats">
+              <button type="button" className="dashboard-chip chip-ok" onClick={() => handleClick('En Desarrollo', 'en_plazo')}>
+                En plazo: {stats.enPlazo}
+              </button>
+              <button type="button" className="dashboard-chip chip-warn" onClick={() => handleClick('En Desarrollo', 'atrasado')}>
+                Atrasado: {stats.atrasado}
+              </button>
+            </div>
         </div>
         <button type="button" className="dashboard-card" style={{ borderLeftColor: '#22c55e' }} onClick={() => handleClick('Terminado')}>
           <div className="dashboard-value" style={{ color: '#22c55e' }}>{stats.terminado}</div>
