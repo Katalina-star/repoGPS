@@ -93,7 +93,7 @@ function Login() {
           </div>
 
           <div className="login-copy">
-            <span className="login-tag">Sistema de Gestion</span>
+            <span className="login-tag">Sistema de Gestión</span>
             <h2>Bienvenida de vuelta</h2>
             <p>
               Ingresa con tu correo y contrasena para acceder al panel

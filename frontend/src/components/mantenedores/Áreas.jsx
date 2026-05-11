@@ -213,7 +213,7 @@ const AreasPanel = () => {
                 Área: {areas.find(a => a.id === areaSeleccionada)?.nombre}
               </span>
             </div>
-            <div className="table-controls" style={{ marginTop: '10px', marginBottom: '15px' }}>
+            <div className="table-controls" style={{ marginTop: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'flex-end' }}>
               <div className="search-wrapper">
                 <span className="search-icon"></span>
                 <input
