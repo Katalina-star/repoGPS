@@ -215,7 +215,7 @@ const AreasPanel = () => {
               </span>
             </div>
             <div className="table-controls" style={{ marginTop: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'flex-end' }}>
-              <div className="search-wrapper">
+              <div className="search-wrapper" style={{ marginRight: '12px' }}>
                 <span className="search-icon"></span>
                 <input
                   type="text"

@@ -219,7 +219,6 @@ const CategoriasPanel = () => {
               Inactivos
             </button>
           </div>
-          <div className="category-hint">Click en una categoría para ver sus subtipos</div>
           <div className="table-controls">
             <div className="search-wrapper">
               <span className="search-icon"></span>
@@ -233,6 +232,7 @@ const CategoriasPanel = () => {
             </div>
           </div>
         </div>
+        <div className="hint-bar">Click en una categoría para ver sus subtipos</div>
         <div className="table-wrap">
           <table className="users-table">
             <thead>

@@ -50,10 +50,13 @@ const Dashboard = ({ user, esAdmin = true, onSelectFiltro }) => {
 
   const enRevisionTotal = stats.enPlazo + stats.atrasado
 
+  const areaLabel = user?.area_nombre || 'Mi Área'
+  const heading = esAdmin ? 'Panel de Control' : `Panel de ${areaLabel}`
+
   return (
     <div className="dashboard">
       <h2 style={{ marginBottom: '24px', color: 'var(--text-main)' }}>
-        Dashboard {esAdmin ? '' : ` - ${user?.area_nombre || 'Mi Area'}`}
+        {heading}
       </h2>
       
       <div className="dashboard-grid">

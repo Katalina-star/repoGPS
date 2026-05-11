@@ -8,7 +8,7 @@ const Sidebar = ({ seccionActual, onCambiarSeccion, onLogout, menuItems = [], ti
 
   // Categorías para el menú no-admin
   const categoriasNoAdmin = {
-    'Mi Area': ['dashboard', 'bandeja', 'expedientes']
+    [usuario?.area_nombre || 'Mi Área']: ['dashboard', 'bandeja', 'expedientes']
   }
 
   // Usar categorías según el rol
