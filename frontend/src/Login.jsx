@@ -82,6 +82,9 @@ function Login() {
 
   return (
     <div className="login-page">
+      <div className="login-theme-toggle">
+        <ThemeToggle />
+      </div>
       <div className="login-shell">
         <div className="login-left">
           <div className="brand">
@@ -103,9 +106,6 @@ function Login() {
         </div>
 
         <div className="login-right">
-          <div className="login-header-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-            <ThemeToggle />
-          </div>
           <form className="login-card" onSubmit={handleSubmit}>
             <h3>Iniciar sesión</h3>
             <p className="login-subtitle">Accede a tu cuenta</p>

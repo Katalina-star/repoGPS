@@ -15,6 +15,15 @@
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.login-theme-toggle {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+}
+
 [data-theme='dark'] .login-page {
   background:
     radial-gradient(circle at top left, rgba(15, 23, 42, 0.55), transparent 32%),
@@ -58,8 +67,8 @@
   height: 340px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
-  top: -100px;
-  right: -100px;
+  top: -60px;
+  right: -30px;
 }
 
 .login-left::after {
