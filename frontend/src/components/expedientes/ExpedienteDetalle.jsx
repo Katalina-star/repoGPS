@@ -1,3 +1,7 @@
+import { useState } from 'react'
+import { UploadModal } from '../upload/UploadModal'
+import { DocumentTimeline } from '../upload/DocumentTimeline'
+
 const ExpedienteDetalle = ({
   expediente,
   historial = [],
@@ -6,8 +10,12 @@ const ExpedienteDetalle = ({
   onAvanzar,
   onDevolver,
   onActualizarFechaTermino,
+  onDocumentoUploaded,
   esAdmin = false
 }) => {
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showNuevaVersionModal, setShowNuevaVersionModal] = useState(false)
+  const [documentoParaNuevaVersion, setDocumentoParaNuevaVersion] = useState(null)
 
   const handleAvanzar = async () => {
     const observacion = prompt('Observación (opcional):')
@@ -43,6 +51,53 @@ const ExpedienteDetalle = ({
     } catch (err) {
       alert(err.message)
     }
+  }
+
+  const handleUploadComplete = (newDoc) => {
+    if (onDocumentoUploaded) {
+      onDocumentoUploaded(newDoc)
+    }
+  }
+
+  const handleDownloadDocumento = async (doc) => {
+    if (doc.ruta_garage) {
+      // Use the download endpoint
+      const token = localStorage.getItem('token')
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || ''}/api/documentos/${doc.id}/descargar`,
+          {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }
+        )
+        if (!response.ok) throw new Error('Error al descargar')
+
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', doc.nombre_archivo)
+        document.body.appendChild(link)
+        link.click()
+        link.parentNode.removeChild(link)
+        window.URL.revokeObjectURL(url)
+      } catch (err) {
+        alert('Error al descargar el documento')
+      }
+    }
+  }
+
+  const handleNuevaVersion = (doc) => {
+    setDocumentoParaNuevaVersion(doc)
+    setShowNuevaVersionModal(true)
+  }
+
+  const handleNuevaVersionComplete = (newVersionDoc) => {
+    if (onDocumentoUploaded) {
+      onDocumentoUploaded(newVersionDoc)
+    }
+    setShowNuevaVersionModal(false)
+    setDocumentoParaNuevaVersion(null)
   }
 
   return (
@@ -104,14 +159,32 @@ const ExpedienteDetalle = ({
             <h4>Documentos</h4>
             {documentos.length > 0 ? (
               <table className="users-table">
-                <thead><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Fecha</th></tr></thead>
+                <thead><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Versión</th><th>Fecha</th><th>Acciones</th></tr></thead>
                 <tbody>
                   {documentos.map(d => (
                     <tr key={d.id}>
                       <td>{d.nombre_archivo}</td>
                       <td>{d.tipo_mime}</td>
                       <td>{(d.tamano_bytes / 1024).toFixed(1)} KB</td>
+                      <td>v{d.version || 1}</td>
                       <td>{new Date(d.fecha_upload).toLocaleDateString()}</td>
+                      <td>
+                        <button
+                          className="btn btn-small"
+                          onClick={() => handleDownloadDocumento(d)}
+                          title="Descargar"
+                        >
+                          📥
+                        </button>
+                        <button
+                          className="btn btn-small btn-primary"
+                          onClick={() => handleNuevaVersion(d)}
+                          title="Nueva versión"
+                          style={{ marginLeft: '4px' }}
+                        >
+                          ➕
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -120,6 +193,25 @@ const ExpedienteDetalle = ({
           </div>
         </div>
       </div>
+
+      {/* Upload Modal for new documents */}
+      <UploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        expedienteId={expediente?.id}
+        onUploadComplete={handleUploadComplete}
+      />
+
+      {/* Upload Modal for new version of existing document */}
+      <UploadModal
+        isOpen={showNuevaVersionModal}
+        onClose={() => {
+          setShowNuevaVersionModal(false)
+          setDocumentoParaNuevaVersion(null)
+        }}
+        documentoId={documentoParaNuevaVersion?.id}
+        onUploadComplete={handleNuevaVersionComplete}
+      />
     </div>
   )
 }

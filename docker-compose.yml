@@ -89,6 +89,23 @@ services:
       - app-network
 
   # ============================================
+  # GarageHQ Storage (S3-compatible)
+  # ============================================
+  garage-hq:
+    image: ghcr.io/katalina-star/garage/garage:latest
+    container_name: garage-hq
+    ports:
+      - "3901:3901"
+      - "3902:3902"
+    environment:
+      - GARAGE_KEEP_ALIVE=true
+      - GARAGE_LOG_LEVEL=info
+    volumes:
+      - garage-data:/data
+    networks:
+      - app-network
+
+  # ============================================
   # Microservicio Expedientes
   # ============================================
   ms-expedientes:
@@ -104,9 +121,14 @@ services:
       - DB_PORT=5432
       - PORT=3002
       - MS_MANTENEDOR_URL=http://ms-mantenedor:3001
+      - GARAGE_ENDPOINT=http://garage-hq:3901
+      - GARAGE_ACCESS_KEY=admin
+      - GARAGE_SECRET_KEY=changeme
+      - GARAGE_BUCKET=repogps-docs
     depends_on:
       - db_expedientes
       - ms-mantenedor
+      - garage-hq
     networks:
       - app-network
 
@@ -220,6 +242,7 @@ volumes:
   pgdata_expedientes:
   prometheus-data:
   grafana-data:
+  garage-data:
 
 networks:
   app-network:

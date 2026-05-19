@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
 const {
   metricsHandler,
   metricsMiddleware,
@@ -9,6 +10,9 @@ const {
   documentoUploadedTotal,
   uploadErrorsTotal
 } = require("./src/metrics");
+
+// Storage client for GarageHQ
+const storage = require("./src/storage/garageClient");
 
 const app = express();
 app.use(cors());
@@ -22,6 +26,62 @@ const JWT_SECRET = process.env.JWT_SECRET || "repoGPS_jwt_secret_key_2026";
 const ADMIN_ROL_ID = 1;
 const MS_USUARIOS_URL = process.env.MS_USUARIOS_URL || "http://ms-usuarios:3000";
 const MS_MANTENEDOR_URL = process.env.MS_MANTENEDOR_URL || "http://ms-mantenedor:3001";
+
+// Multer configuration for file uploads
+const multerStorage = multer.memoryStorage();
+const upload = multer({
+  storage: multerStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB max
+  },
+});
+
+// Allowed file extensions for construction documents
+const ALLOWED_EXTENSIONS = new Set([
+  '.pdf', '.dwg', '.dxf', '.rvt', '.skp', '.ifc',
+  '.csv', '.xls', '.xlsx', '.doc', '.docx',
+  '.jpg', '.jpeg', '.png', '.tiff', '.tif'
+]);
+
+// Allowed MIME types for construction documents
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/vnd.dwg', 'image/x-dwg', // DWG
+  'application/dxf', 'image/vnd.dxf', 'image/x-dxf', // DXF
+  'application/x-rvt', 'application/vnd.autodesk.rvt', // Revit
+  'application/x-sketchup', 'application/vnd.sketchup.skp', // SketchUp
+  'application/x-ifc', 'application/ifc', // IFC
+  'text/csv',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg', 'image/png', 'image/tiff'
+]);
+
+function isAllowedFile(file) {
+  const ext = '.' + file.originalname.split('.').pop().toLowerCase();
+  const mime = file.mimetype.toLowerCase();
+
+  // Check extension
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return { allowed: false, error: `Extensión no permitida: ${ext}. Solo se permiten: PDF, DWG, DXF, RVT, SKP, IFC, XLS, XLSX, DOC, DOCX, JPG, PNG, TIFF` };
+  }
+
+  // Check MIME type (allow generic image/* for unknown image types)
+  if (!ALLOWED_MIME_TYPES.has(mime) && !mime.startsWith('image/')) {
+    return { allowed: false, error: `Tipo de archivo no permitido: ${mime}` };
+  }
+
+  return { allowed: true };
+}
+
+// Initialize GarageHQ storage client
+try {
+  storage.initGarageClient();
+} catch (err) {
+  console.warn('[ms-expedientes] Could not initialize GarageHQ client:', err.message);
+}
 
 // Middleware de autenticación JWT
 function authMiddleware(req, res, next) {
@@ -1072,6 +1132,418 @@ app.delete("/api/documentos/:id", async (req, res) => {
     res.json({ message: "Documento eliminado lógicamente" });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// DOCUMENT UPLOAD WITH VERSIONING
+// ============================================
+
+/**
+ * Upload a document with automatic versioning
+ * POST /api/documentos/upload
+ * Input: multipart/form-data (expediente_id, archivo, descripcion)
+ */
+app.post("/api/documentos/upload", authMiddleware, upload.single("archivo"), async (req, res) => {
+  const { expediente_id, descripcion } = req.body;
+  const usuarioId = req.user?.id;
+
+  if (!expediente_id) {
+    return res.status(400).json({ error: "expediente_id es requerido" });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: "archivo es requerido" });
+  }
+
+  // Validate file type (extension and MIME)
+  const fileValidation = isAllowedFile(req.file);
+  if (!fileValidation.allowed) {
+    uploadErrorsTotal.inc();
+    return res.status(400).json({ error: fileValidation.error });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Verify expediente exists
+    const expResult = await client.query(
+      "SELECT id FROM expedientes WHERE id = $1 AND estado_activo = true",
+      [expediente_id]
+    );
+    if (expResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Expediente no encontrado" });
+    }
+
+    // Create new document (no versioning by filename - use POST /documentos/:id/versiones instead)
+    const newVersion = 1;
+
+    // Generate GarageHQ key: {expediente_id}/{timestamp}/{nombre_original}
+    const storageKey = `${expediente_id}/doc-${Date.now()}/${req.file.originalname}`;
+
+    // Upload to GarageHQ
+    let uploadResult;
+    try {
+      uploadResult = await storage.uploadFile(
+        storageKey,
+        req.file.buffer,
+        { contentType: req.file.mimetype }
+      );
+    } catch (uploadErr) {
+      console.error("[upload] GarageHQ upload failed:", uploadErr.message);
+      await client.query("ROLLBACK");
+      uploadErrorsTotal.inc();
+      return res.status(500).json({ error: "Error al subir archivo a storage" });
+    }
+
+    // Insert into documentos table
+    const insertResult = await client.query(
+      `INSERT INTO documentos 
+       (expediente_id, nombre_archivo, ruta_garage, tipo_mime, tamano_bytes, version, usuario_upload_id, es_version_actual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING *`,
+      [
+        expediente_id,
+        req.file.originalname,
+        storageKey,
+        req.file.mimetype,
+        req.file.size,
+        newVersion,
+        usuarioId,
+        true
+      ]
+    );
+
+    const newDoc = insertResult.rows[0];
+
+    await client.query("COMMIT");
+    documentoUploadedTotal.inc();
+
+    res.status(201).json({
+      id: newDoc.id,
+      expediente_id: newDoc.expediente_id,
+      nombre_archivo: newDoc.nombre_archivo,
+      ruta_garage: newDoc.ruta_garage,
+      tipo_mime: newDoc.tipo_mime,
+      tamano_bytes: newDoc.tamano_bytes,
+      version: newDoc.version,
+      es_version_actual: newDoc.es_version_actual,
+      fecha_upload: newDoc.fecha_upload
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    uploadErrorsTotal.inc();
+    console.error("[upload] Error:", err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * Get all versions of a document
+ * GET /api/documentos/:id/versiones
+ */
+app.get("/api/documentos/:id/versiones", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Get current version from documentos table
+    const currentDoc = await pool.query(
+      "SELECT * FROM documentos WHERE id = $1",
+      [id]
+    );
+
+    if (currentDoc.rows.length === 0) {
+      return res.status(404).json({ error: "Documento no encontrado" });
+    }
+
+    const doc = currentDoc.rows[0];
+
+    // Get version history from documentos_version table
+    const versionsResult = await pool.query(
+      `SELECT id, version, ruta_garage, nombre_archivo, tipo_mime, tamano_bytes, fecha_upload, usuario_upload_id, es_version_actual
+       FROM documentos_version 
+       WHERE documento_id = $1 
+       ORDER BY version DESC`,
+      [id]
+    );
+
+    // Combine current version with history
+    const versions = [
+      {
+        id: doc.id,
+        version: doc.version,
+        ruta_garage: doc.ruta_garage,
+        nombre_archivo: doc.nombre_archivo,
+        tipo_mime: doc.tipo_mime,
+        tamano_bytes: doc.tamano_bytes,
+        fecha_upload: doc.fecha_upload,
+        usuario_upload_id: doc.usuario_upload_id,
+        es_version_actual: doc.es_version_actual
+      },
+      ...versionsResult.rows
+    ];
+
+    res.json(versions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Create a new version of an existing document
+ * POST /api/documentos/:id/versiones
+ * Input: multipart/form-data (archivo, descripcion)
+ */
+app.post("/api/documentos/:id/versiones", authMiddleware, upload.single("archivo"), async (req, res) => {
+  const { id: documentoId } = req.params;
+  const { descripcion } = req.body;
+  const usuarioId = req.user?.id;
+
+  if (!req.file) {
+    return res.status(400).json({ error: "archivo es requerido" });
+  }
+
+  // Validate file type (extension and MIME)
+  const fileValidation = isAllowedFile(req.file);
+  if (!fileValidation.allowed) {
+    uploadErrorsTotal.inc();
+    return res.status(400).json({ error: fileValidation.error });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Verify document exists
+    const currentDocResult = await client.query(
+      "SELECT * FROM documentos WHERE id = $1 AND estado_activo = true",
+      [documentoId]
+    );
+
+    if (currentDocResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Documento no encontrado" });
+    }
+
+    const currentDoc = currentDocResult.rows[0];
+    const currentVersion = currentDoc.version || 1;
+
+    // Get highest version number from documentos_version table
+    const maxVersionResult = await client.query(
+      "SELECT MAX(version) as max_version FROM documentos_version WHERE documento_id = $1",
+      [documentoId]
+    );
+    const maxVersionFromHistory = maxVersionResult.rows[0]?.max_version || 0;
+    const newVersion = Math.max(currentVersion, maxVersionFromHistory) + 1;
+
+    // Generate GarageHQ key
+    const storageKey = `${currentDoc.expediente_id}/doc-${documentoId}/v${newVersion}/${req.file.originalname}`;
+
+    // Upload to GarageHQ
+    try {
+      await storage.uploadFile(
+        storageKey,
+        req.file.buffer,
+        { contentType: req.file.mimetype }
+      );
+    } catch (uploadErr) {
+      console.error("[upload-version] GarageHQ upload failed:", uploadErr.message);
+      await client.query("ROLLBACK");
+      uploadErrorsTotal.inc();
+      return res.status(500).json({ error: "Error al subir archivo a storage" });
+    }
+
+    // Mark current document as not current version
+    await client.query(
+      "UPDATE documentos SET es_version_actual = false, version = $1 WHERE id = $2",
+      [currentVersion, documentoId]
+    );
+
+    // Save current version to history
+    await client.query(
+      `INSERT INTO documentos_version
+       (documento_id, version, ruta_garage, nombre_archivo, tipo_mime, tamano_bytes, usuario_upload_id, es_version_actual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        documentoId,
+        currentVersion,
+        currentDoc.ruta_garage,
+        currentDoc.nombre_archivo,
+        currentDoc.tipo_mime,
+        currentDoc.tamano_bytes,
+        currentDoc.usuario_upload_id,
+        false
+      ]
+    );
+
+    // Insert new version as current document
+    const newDocResult = await client.query(
+      `INSERT INTO documentos
+       (expediente_id, nombre_archivo, ruta_garage, tipo_mime, tamano_bytes, version, usuario_upload_id, es_version_actual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        currentDoc.expediente_id,
+        req.file.originalname,
+        storageKey,
+        req.file.mimetype,
+        req.file.size,
+        newVersion,
+        usuarioId,
+        true
+      ]
+    );
+
+    const newDoc = newDocResult.rows[0];
+
+    await client.query("COMMIT");
+    documentoUploadedTotal.inc();
+
+    res.status(201).json({
+      id: newDoc.id,
+      documento_id: documentoId,
+      nombre_archivo: newDoc.nombre_archivo,
+      ruta_garage: newDoc.ruta_garage,
+      tipo_mime: newDoc.tipo_mime,
+      tamano_bytes: newDoc.tamano_bytes,
+      version: newDoc.version,
+      es_version_actual: newDoc.es_version_actual,
+      fecha_upload: newDoc.fecha_upload,
+      mensaje: `Nueva versión ${newVersion} creada exitosamente`
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    uploadErrorsTotal.inc();
+    console.error("[upload-version] Error:", err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * Download a specific version of a document
+ * GET /api/documentos/:id/descargar
+ * GET /api/documentos/:id/descargar/:version
+ */
+app.get("/api/documentos/:id/descargar/:version?", async (req, res) => {
+  const { id, version } = req.params;
+  
+  try {
+    let doc;
+    
+    if (version) {
+      // Download specific version from history
+      const versionResult = await pool.query(
+        "SELECT * FROM documentos_version WHERE documento_id = $1 AND version = $2",
+        [id, parseInt(version)]
+      );
+      
+      if (versionResult.rows.length === 0) {
+        return res.status(404).json({ error: "Versión no encontrada" });
+      }
+      
+      doc = versionResult.rows[0];
+    } else {
+      // Download current version
+      const currentResult = await pool.query(
+        "SELECT * FROM documentos WHERE id = $1",
+        [id]
+      );
+      
+      if (currentResult.rows.length === 0) {
+        return res.status(404).json({ error: "Documento no encontrado" });
+      }
+      
+      doc = currentResult.rows[0];
+    }
+
+    if (!doc.ruta_garage) {
+      return res.status(404).json({ error: "Archivo no encontrado en storage" });
+    }
+
+    // Get file from GarageHQ
+    try {
+      const fileData = await storage.downloadFile(doc.ruta_garage);
+      
+      // Convert Blob to Buffer for response
+      const arrayBuffer = await fileData.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      res.set({
+        "Content-Type": doc.tipo_mime || "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${doc.nombre_archivo}"`,
+        "Content-Length": buffer.length,
+      });
+      
+      res.send(buffer);
+    } catch (storageErr) {
+      console.error("[download] Storage error:", storageErr.message);
+      return res.status(500).json({ error: "Error al descargar archivo" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Delete document and all its versions
+ * DELETE /api/documentos/:id Completo con cascade
+ */
+app.delete("/api/documentos/:id Completo", async (req, res) => {
+  const { id } = req.params;
+  
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    
+    // Get all versions (current + history)
+    const currentDoc = await client.query(
+      "SELECT id, ruta_garage FROM documentos WHERE id = $1",
+      [id]
+    );
+    
+    if (currentDoc.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Documento no encontrado" });
+    }
+    
+    // Get version history paths for deletion
+    const versions = await client.query(
+      "SELECT ruta_garage FROM documentos_version WHERE documento_id = $1",
+      [id]
+    );
+    
+    // Delete files from GarageHQ (current + history)
+    const allPaths = [
+      currentDoc.rows[0].ruta_garage,
+      ...versions.rows.map(v => v.ruta_garage)
+    ].filter(p => p);
+    
+    for (const path of allPaths) {
+      try {
+        await storage.deleteFile(path);
+      } catch (err) {
+        console.warn(`[delete] Could not delete ${path}:`, err.message);
+      }
+    }
+    
+    // Delete from database (cascade will handle documentos_version)
+    await client.query(
+      "UPDATE documentos SET estado_activo = false WHERE id = $1",
+      [id]
+    );
+    
+    await client.query("COMMIT");
+    res.json({ message: "Documento y todas sus versiones eliminadas" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 

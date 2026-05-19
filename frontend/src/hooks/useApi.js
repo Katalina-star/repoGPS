@@ -91,5 +91,41 @@ export const useApi = () => {
     return handleResponse(res, logout, data)
   }, [logout])
 
-  return { get, post, put, patch, del }
+  // POST with multipart/form-data for file uploads
+  const postFile = useCallback(async (endpoint, formData, onProgress) => {
+    const token = localStorage.getItem('token')
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+
+      xhr.open('POST', `${API_URL}${endpoint}`)
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      }
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percent = Math.round((event.loaded / event.total) * 100)
+          onProgress(percent)
+        }
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText))
+          } catch (e) {
+            resolve(xhr.responseText)
+          }
+        } else {
+          reject(new Error(`Error en la petición (status: ${xhr.status})`))
+        }
+      }
+
+      xhr.onerror = () => reject(new Error('Error de red'))
+      xhr.send(formData)
+    })
+  }, [])
+
+  return { get, post, put, patch, del, postFile }
 }
