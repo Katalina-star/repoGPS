@@ -135,8 +135,6 @@ services:
       - ms-usuarios
       - ms-mantenedor
       - ms-expedientes
-      - prometheus
-      - grafana
     networks:
       - app-network
 
