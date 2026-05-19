@@ -47,12 +47,12 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
       let result
       if (isNuevaVersion && documentoId) {
         // Create new version for existing document
-        result = await crearVersion(documentoId, selectedFile, descripcion, (percent) => {
+        result = await crearVersion(documentoId, selectedFile, descripcion, () => {
           // Progress is handled by the hook
         })
       } else if (expedienteId) {
         // Upload new document to expediente
-        result = await uploadDocumento(expedienteId, selectedFile, descripcion, (percent) => {
+        result = await uploadDocumento(expedienteId, selectedFile, descripcion, () => {
           // Progress is handled by the hook
         })
       } else {
@@ -67,7 +67,7 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
       setSelectedFile(null)
       setDescripcion('')
       onClose()
-    } catch (err) {
+    } catch {
       // Error is handled by the hook
     }
   }

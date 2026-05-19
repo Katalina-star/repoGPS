@@ -114,7 +114,7 @@ export const useApi = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             resolve(JSON.parse(xhr.responseText))
-          } catch (e) {
+} catch {
             resolve(xhr.responseText)
           }
         } else {

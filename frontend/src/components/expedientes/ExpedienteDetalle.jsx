@@ -81,7 +81,7 @@ const ExpedienteDetalle = ({
         link.click()
         link.parentNode.removeChild(link)
         window.URL.revokeObjectURL(url)
-      } catch (err) {
+      } catch {
         alert('Error al descargar el documento')
       }
     }

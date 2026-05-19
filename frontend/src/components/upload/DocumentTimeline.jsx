@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useDocumentos } from '../../hooks/useDocumentos'
 
 export const DocumentTimeline = ({ documentoId, documento }) => {
@@ -6,19 +6,21 @@ export const DocumentTimeline = ({ documentoId, documento }) => {
   const [versiones, setVersiones] = useState([])
   const { getVersiones, loading, error, downloadAndSave } = useDocumentos()
 
-  useEffect(() => {
-    if (isExpanded && documentoId) {
-      loadVersiones()
-    }
-  }, [isExpanded, documentoId])
-
   const loadVersiones = async () => {
     try {
       const data = await getVersiones(documentoId)
       setVersiones(data || [])
-    } catch (err) {
-      console.error('Error loading versions:', err)
+    } catch {
+      console.error('Error loading versions')
     }
+  }
+
+  const handleToggle = () => {
+    const willExpand = !isExpanded
+    if (willExpand) {
+      loadVersiones()
+    }
+    setIsExpanded(willExpand)
   }
 
   const formatDate = (dateString) => {
@@ -57,7 +59,7 @@ export const DocumentTimeline = ({ documentoId, documento }) => {
         <>
           <button
             className="timeline-toggle"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={handleToggle}
           >
             <span className="toggle-icon">{isExpanded ? '▼' : '▶'}</span>
             <span>Versiones ({versiones.length || currentVersion})</span>
@@ -71,7 +73,7 @@ export const DocumentTimeline = ({ documentoId, documento }) => {
                 <p className="error-text">{error}</p>
               ) : (
                 <div className="timeline-list">
-                  {versiones.map((version, index) => (
+                  {versiones.map((version) => (
                     <div
                       key={version.id || `v${version.version}`}
                       className={`timeline-item ${version.es_version_actual ? 'current' : ''}`}
