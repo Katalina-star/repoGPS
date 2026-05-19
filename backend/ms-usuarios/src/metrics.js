@@ -24,9 +24,10 @@ function metricsMiddleware(req, res, next) {
   next();
 }
 
-function metricsHandler(req, res) {
+async function metricsHandler(req, res) {
   res.set("Content-Type", register.contentType);
-  res.end(register.metrics());
+  const metrics = await register.metrics();
+  res.end(metrics);
 }
 
 module.exports = {
