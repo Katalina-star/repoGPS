@@ -151,6 +151,8 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
+      - "--web.external-url=/prometheus"
+      - "--web.route-prefix=/prometheus"
     depends_on:
       - ms-usuarios
       - ms-mantenedor
@@ -167,6 +169,8 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_ROOT_URL=http://pacheco.chillan.ubiobio.cl:8045/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
