@@ -1,0 +1,85 @@
+{
+  "uid": "business-expedientes",
+  "title": "Business / Expedientes",
+  "tags": ["business", "expedientes"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Expedientes Created (5m)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "increase(expediente_created_total[5m])",
+          "legendFormat": "created"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Documents Uploaded (5m)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "increase(documento_uploaded_total[5m])",
+          "legendFormat": "uploaded"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Upload Errors (5m)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "increase(upload_errors_total[5m])",
+          "legendFormat": "errors"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Expedientes Created Rate",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(expediente_created_total[5m])",
+          "legendFormat": "created"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Document Uploads Rate",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(documento_uploaded_total[5m])",
+          "legendFormat": "uploaded"
+        },
+        {
+          "expr": "rate(upload_errors_total[5m])",
+          "legendFormat": "errors"
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" }
+}

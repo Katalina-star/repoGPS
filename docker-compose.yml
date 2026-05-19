@@ -138,11 +138,86 @@ services:
     networks:
       - app-network
 
+  # ============================================
+  # Monitoring (internal-only, sin puertos expuestos)
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    depends_on:
+      - ms-usuarios
+      - ms-mantenedor
+      - ms-expedientes
+      - node-exporter
+      - postgres-exporter
+      - nginx-exporter
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana:10.4.5
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - app-network
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - app-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:password123@db:5432/db_usuarios?sslmode=disable
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.1.0
+    container_name: nginx-exporter
+    command:
+      - "-nginx.scrape-uri=http://nginx:8045/nginx_status"
+    depends_on:
+      - nginx
+    networks:
+      - app-network
+
 volumes:
   pgdata_usuarios:
   pgdata_mantenedor:
   pgdata_expedientes:
+  prometheus-data:
+  grafana-data:
 
 networks:
   app-network:
     driver: bridge
+    

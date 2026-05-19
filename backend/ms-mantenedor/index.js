@@ -1,10 +1,14 @@
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
+const { metricsHandler, metricsMiddleware } = require("./src/metrics");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(metricsMiddleware);
+
+app.get("/metrics", metricsHandler);
 
 // Conexión a db_mantenedor
 const pool = new Pool({

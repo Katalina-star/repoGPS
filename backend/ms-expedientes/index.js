@@ -2,10 +2,20 @@ const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
+const {
+  metricsHandler,
+  metricsMiddleware,
+  expedienteCreatedTotal,
+  documentoUploadedTotal,
+  uploadErrorsTotal
+} = require("./src/metrics");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(metricsMiddleware);
+
+app.get("/metrics", metricsHandler);
 
 // JWT Configuration (debe coincidir con ms-usuarios)
 const JWT_SECRET = process.env.JWT_SECRET || "repoGPS_jwt_secret_key_2026";
@@ -410,6 +420,7 @@ app.post("/api/procesos", async (req, res) => {
       "INSERT INTO procesos (area_id, nombre, descripcion) VALUES ($1, $2, $3) RETURNING *",
       [areaIdNum, nombre, descripcion]
     );
+    expedienteCreatedTotal.inc();
     res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -805,8 +816,10 @@ app.post("/api/expedientes", async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [proceso_id, disciplina_id, subtipo_id, etapa_actual_id, titulo, descripcion, fecha_termino || null]
     );
+    documentoUploadedTotal.inc();
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    uploadErrorsTotal.inc();
     res.status(500).json({ error: err.message });
   }
 });
