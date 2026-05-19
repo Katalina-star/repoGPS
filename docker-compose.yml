@@ -99,9 +99,9 @@ services:
       - "3901:3901"
       - "3902:3902"
       - "3903:3903"
-    environment:
-      - GARAGE_DEFAULT_ACCESS_KEY=admin
-      - GARAGE_DEFAULT_SECRET_KEY=changeme
+environment:
+      - GARAGE_DEFAULT_ACCESS_KEY=GKadmin01
+      - GARAGE_DEFAULT_SECRET_KEY=changeme123
       - GARAGE_DEFAULT_BUCKET=repogps-docs
       - GARAGE_LOG_LEVEL=info
     volumes:
@@ -128,8 +128,8 @@ services:
       - PORT=3002
       - MS_MANTENEDOR_URL=http://ms-mantenedor:3001
       - GARAGE_ENDPOINT=http://garage-hq:3900
-      - GARAGE_ACCESS_KEY=admin
-      - GARAGE_SECRET_KEY=changeme
+      - GARAGE_ACCESS_KEY=GKadmin01
+      - GARAGE_SECRET_KEY=changeme123
       - GARAGE_BUCKET=repogps-docs
     depends_on:
       - db_expedientes

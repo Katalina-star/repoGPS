@@ -20,5 +20,5 @@ index = "index.html"
 
 [admin]
 api_bind_addr = "[::]:3903"
-admin_token = "admin-token"
-metrics_token = "metrics-token"
+admin_token = "admin-token-change-this"
+metrics_token = "metrics-token-change-this"
