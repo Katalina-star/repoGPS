@@ -6,6 +6,7 @@ COPY package.json ./
 RUN npm install
 
 COPY index.js ./
+COPY src ./src
 
 EXPOSE 3002
 
