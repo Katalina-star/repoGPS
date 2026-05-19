@@ -91,7 +91,7 @@ services:
   # ============================================
   # GarageHQ Storage (S3-compatible)
   # ============================================
-garage-hq:
+  garage-hq:
     image: dxflrs/garage:v2.3.0
     container_name: garage-hq
     ports:
