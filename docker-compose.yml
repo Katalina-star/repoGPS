@@ -55,6 +55,9 @@ services:
   ms-usuarios:
     image: ghcr.io/katalina-star/repogps/repogps-ms-usuarios:latest
     container_name: ms-usuarios
+    volumes:
+      - ./backend/ms-usuarios:/app
+    command: node index.js
     environment:
       - NODE_OPTIONS=--max-old-space-size=256
       - DB_USER=postgres
@@ -76,6 +79,9 @@ services:
   ms-mantenedor:
     image: ghcr.io/katalina-star/repogps/repogps-ms-mantenedor:latest
     container_name: ms-mantenedor
+    volumes:
+      - ./backend/ms-mantenedor:/app
+    command: node index.js
     environment:
       - DB_USER=postgres
       - DB_HOST=db_mantenedor
@@ -94,6 +100,9 @@ services:
   ms-expedientes:
     image: ghcr.io/katalina-star/repogps/repogps-ms-expedientes:latest
     container_name: ms-expedientes
+    volumes:
+      - ./backend/ms-expedientes:/app
+    command: node index.js
     expose:
       - "3002"
     environment:
@@ -116,6 +125,9 @@ services:
   frontend:
     image: ghcr.io/katalina-star/repogps/repogps-frontend:latest
     container_name: frontend-ui
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     environment:
       - VITE_API_USUARIOS_URL=http://nginx:80
     networks:
