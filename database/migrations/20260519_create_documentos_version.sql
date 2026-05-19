@@ -22,9 +22,9 @@ CREATE INDEX IF NOT EXISTS idx_documentos_version_documento
 ON documentos_version(documento_id, version DESC);
 
 -- Index for finding all versions of a document
-CREATE INDEX IF NOT EXISTS idx_documentos_version_by_doc 
-ON documentos_version(documento_id) 
-WHERE estado_activo = true;
+CREATE INDEX IF NOT EXISTS idx_documentos_version_by_doc
+ON documentos_version(documento_id)
+WHERE es_version_actual = true;
 
 -- Unique constraint: one version number per document
 CREATE UNIQUE INDEX IF NOT EXISTS idx_documentos_version_unique 
