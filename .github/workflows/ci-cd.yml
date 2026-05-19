@@ -107,8 +107,7 @@ jobs:
           context: ./backend/ms-usuarios
           push: true
           tags: ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-usuarios:latest
-          cache-from: type=registry,ref=ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-usuarios:latest
-          cache-to: type=inline
+          no-cache: true
 
       # ============================================
       # Build ms-mantenedor (NUEVO)
@@ -119,8 +118,7 @@ jobs:
           context: ./backend/ms-mantenedor
           push: true
           tags: ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-mantenedor:latest
-          cache-from: type=registry,ref=ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-mantenedor:latest
-          cache-to: type=inline
+          no-cache: true
 
       # ============================================
       # Build ms-expedientes
@@ -131,8 +129,7 @@ jobs:
           context: ./backend/ms-expedientes
           push: true
           tags: ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-expedientes:latest
-          cache-from: type=registry,ref=ghcr.io/${{ env.REPO_LOWER }}/repogps-ms-expedientes:latest
-          cache-to: type=inline
+          no-cache: true
 
   # ==========================================
   # FASE 3: DESPLIEGUE CONTINUO (CD) - Servidor UBB
