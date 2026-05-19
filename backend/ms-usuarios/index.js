@@ -4,14 +4,14 @@ const { Pool } = require("pg");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const { metricsHandler, metricsMiddleware } = require("./src/metrics");
+// const { metricsHandler, metricsMiddleware } = require("./src/metrics");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(metricsMiddleware);
+// app.use(metricsMiddleware);
 
-app.get("/metrics", metricsHandler);
+// app.get("/metrics", metricsHandler);
 
 // Configuración JWT
 const JWT_SECRET = process.env.JWT_SECRET || "repoGPS_jwt_secret_key_2026";
