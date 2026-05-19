@@ -94,12 +94,12 @@ services:
   garage-hq:
     image: dxflrs/garage:v2.3.0
     container_name: garage-hq
-    ports:
+ports:
       - "3900:3900"
       - "3901:3901"
       - "3902:3902"
       - "3903:3903"
-environment:
+    environment:
       - GARAGE_DEFAULT_ACCESS_KEY=GKadmin01
       - GARAGE_DEFAULT_SECRET_KEY=changeme123
       - GARAGE_DEFAULT_BUCKET=repogps-docs
