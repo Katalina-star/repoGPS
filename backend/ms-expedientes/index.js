@@ -1380,14 +1380,13 @@ app.post("/api/documentos/:id/versiones", authMiddleware, upload.single("archivo
       ]
     );
 
-    // Insert new version as current document
-    const newDocResult = await client.query(
-      `INSERT INTO documentos
-       (expediente_id, nombre_archivo, ruta_archivo, ruta_garage, tipo_mime, tamano_bytes, version, usuario_upload_id, es_version_actual)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    // Update current document with new version data (not insert new document)
+    const updatedDocResult = await client.query(
+      `UPDATE documentos
+       SET nombre_archivo = $1, ruta_archivo = $2, ruta_garage = $3, tipo_mime = $4, tamano_bytes = $5, version = $6, usuario_upload_id = $7, es_version_actual = true, fecha_upload = CURRENT_TIMESTAMP
+       WHERE id = $8
        RETURNING *`,
       [
-        currentDoc.expediente_id,
         req.file.originalname,
         storageKey,
         storageKey,
@@ -1395,25 +1394,25 @@ app.post("/api/documentos/:id/versiones", authMiddleware, upload.single("archivo
         req.file.size,
         newVersion,
         usuarioId,
-        true
+        documentoId
       ]
     );
 
-    const newDoc = newDocResult.rows[0];
+    const updatedDoc = updatedDocResult.rows[0];
 
     await client.query("COMMIT");
     documentoUploadedTotal.inc();
 
     res.status(201).json({
-      id: newDoc.id,
+      id: updatedDoc.id,
       documento_id: documentoId,
-      nombre_archivo: newDoc.nombre_archivo,
-      ruta_garage: newDoc.ruta_garage,
-      tipo_mime: newDoc.tipo_mime,
-      tamano_bytes: newDoc.tamano_bytes,
-      version: newDoc.version,
-      es_version_actual: newDoc.es_version_actual,
-      fecha_upload: newDoc.fecha_upload,
+      nombre_archivo: updatedDoc.nombre_archivo,
+      ruta_garage: updatedDoc.ruta_garage,
+      tipo_mime: updatedDoc.tipo_mime,
+      tamano_bytes: updatedDoc.tamano_bytes,
+      version: updatedDoc.version,
+      es_version_actual: updatedDoc.es_version_actual,
+      fecha_upload: updatedDoc.fecha_upload,
       mensaje: `Nueva versión ${newVersion} creada exitosamente`
     });
   } catch (err) {
