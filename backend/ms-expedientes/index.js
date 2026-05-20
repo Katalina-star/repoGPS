@@ -1382,12 +1382,13 @@ app.post("/api/documentos/:id/versiones", authMiddleware, upload.single("archivo
     // Insert new version as current document
     const newDocResult = await client.query(
       `INSERT INTO documentos
-       (expediente_id, nombre_archivo, ruta_garage, tipo_mime, tamano_bytes, version, usuario_upload_id, es_version_actual)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (expediente_id, nombre_archivo, ruta_archivo, ruta_garage, tipo_mime, tamano_bytes, version, usuario_upload_id, es_version_actual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         currentDoc.expediente_id,
         req.file.originalname,
+        storageKey,
         storageKey,
         req.file.mimetype,
         req.file.size,
