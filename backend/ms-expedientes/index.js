@@ -1370,11 +1370,11 @@ app.post("/api/documentos/:id/versiones", authMiddleware, upload.single("archivo
       [
         documentoId,
         currentVersion,
-        currentDoc.ruta_garage,
-        currentDoc.nombre_archivo,
-        currentDoc.tipo_mime,
-        currentDoc.tamano_bytes,
-        currentDoc.usuario_upload_id,
+        storageKey,
+        req.file.originalname,
+        req.file.mimetype,
+        req.file.size,
+        usuarioId,
         false
       ]
     );
