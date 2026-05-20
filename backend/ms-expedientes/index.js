@@ -1481,17 +1481,14 @@ app.get("/api/documentos/:id/descargar/:version?", async (req, res) => {
     try {
       const fileData = await storage.downloadFile(doc.ruta_garage);
       
-      // Convert Blob to Buffer for response
-      const arrayBuffer = await fileData.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      
+      // fileData is already a Buffer (from storage.downloadFile)
       res.set({
         "Content-Type": doc.tipo_mime || "application/octet-stream",
         "Content-Disposition": `attachment; filename="${doc.nombre_archivo}"`,
-        "Content-Length": buffer.length,
+        "Content-Length": fileData.length,
       });
       
-      res.send(buffer);
+      res.send(fileData);
     } catch (storageErr) {
       console.error("[download] Storage error:", storageErr.message);
       return res.status(500).json({ error: "Error al descargar archivo" });
