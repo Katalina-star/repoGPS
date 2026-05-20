@@ -102,137 +102,144 @@ const ExpedienteDetalle = ({
   }
 
   return (
-    <div className="modal-overlay" onClick={onCerrar}>
-      <div className="modal-content modal-content--expediente" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Expediente #{expediente.id}</h2>
-          <button className="btn-close" onClick={onCerrar}>×</button>
-        </div>
-        
-        <div className="modal-body">
-          <div className="exp-info">
-            <p><strong>Título:</strong> {expediente.titulo}</p>
-            <p><strong>Proceso:</strong> {expediente.proceso_nombre}</p>
-            <p><strong>Etapa Actual:</strong> <span className="role-tag">{expediente.etapa_actual}</span></p>
-            <p><strong>Descripción:</strong> {expediente.descripcion || 'Sin descripción'}</p>
-            <p><strong>Fecha Creación:</strong> {new Date(expediente.fecha_creacion).toLocaleString()}</p>
-            <p><strong>Fecha de término:</strong> {expediente.fecha_termino ? new Date(expediente.fecha_termino).toLocaleDateString() : '-'}</p>
-            {esAdmin && (
-              <div style={{ marginTop: '8px' }}>
-                <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '4px' }}>
-                  Editar fecha de término
-                </label>
-                <input
-                  type="date"
-                  value={expediente.fecha_termino ? new Date(expediente.fecha_termino).toISOString().slice(0, 10) : ''}
-                  onChange={handleFechaTerminoChange}
-                />
-              </div>
-            )}
+    <>
+      {/* Expediente Detail Modal */}
+      <div className="modal-overlay" onClick={onCerrar}>
+        <div className="modal-content modal-content--expediente" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>Expediente #{expediente.id}</h2>
+            <button className="btn-close" onClick={onCerrar}>×</button>
           </div>
 
-          <div className="exp-actions">
-            <button className="btn btn-primary" onClick={handleAvanzar}>Avanzar</button>
-            <button className="btn btn-secondary" onClick={handleDevolver}>Devolver</button>
-            <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>Adjuntar archivo</button>
-          </div>
+          <div className="modal-body">
+            <div className="exp-info">
+              <p><strong>Título:</strong> {expediente.titulo}</p>
+              <p><strong>Proceso:</strong> {expediente.proceso_nombre}</p>
+              <p><strong>Etapa Actual:</strong> <span className="role-tag">{expediente.etapa_actual}</span></p>
+              <p><strong>Descripción:</strong> {expediente.descripcion || 'Sin descripción'}</p>
+              <p><strong>Fecha Creación:</strong> {new Date(expediente.fecha_creacion).toLocaleString()}</p>
+              <p><strong>Fecha de término:</strong> {expediente.fecha_termino ? new Date(expediente.fecha_termino).toLocaleDateString() : '-'}</p>
+              {esAdmin && (
+                <div style={{ marginTop: '8px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '4px' }}>
+                    Editar fecha de término
+                  </label>
+                  <input
+                    type="date"
+                    value={expediente.fecha_termino ? new Date(expediente.fecha_termino).toISOString().slice(0, 10) : ''}
+                    onChange={handleFechaTerminoChange}
+                  />
+                </div>
+              )}
+            </div>
 
-          <div className="exp-section">
-            <h4>Historial</h4>
-            {historial.length > 0 ? (
-              <table className="users-table">
-                <thead><tr><th>Fecha</th><th>De</th><th>A</th><th>Usuario</th><th>Observación</th></tr></thead>
-                <tbody>
-                  {historial.map(h => (
-                    <tr key={h.id}>
-                      <td>{new Date(h.fecha_cambio).toLocaleString()}</td>
-                      <td>{h.etapa_anterior_nombre || '-'}</td>
-                      <td>{h.etapa_nueva_nombre || '-'}</td>
-                      <td>{h.usuario_nombre || '-'}</td>
-                      <td>{h.observacion || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : <p className="empty-text">Sin cambios de etapa registrados</p>}
-          </div>
+            <div className="exp-actions">
+              <button className="btn btn-primary" onClick={handleAvanzar}>Avanzar</button>
+              <button className="btn btn-secondary" onClick={handleDevolver}>Devolver</button>
+              <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>Adjuntar archivo</button>
+            </div>
 
-          <div className="exp-section">
-            <h4>Documentos</h4>
-            {documentos.length > 0 ? (
-              <table className="users-table">
-                <thead><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Versión</th><th>Fecha</th><th>Acciones</th></tr></thead>
-                <tbody>
-                  {documentos.map(d => (
-                    <>
-                      <tr key={d.id}>
-                        <td>
-                          <button
-                            className="doc-name-toggle"
-                            onClick={() => setExpandedDocId(expandedDocId === d.id ? null : d.id)}
-                            title={expandedDocId === d.id ? 'Ocultar versiones' : 'Ver versiones'}
-                          >
-                            <span className="toggle-icon">{expandedDocId === d.id ? '▼' : '▶'}</span>
-                            {d.nombre_archivo}
-                          </button>
-                        </td>
-                        <td>{d.tipo_mime}</td>
-                        <td>{(d.tamano_bytes / 1024).toFixed(1)} KB</td>
-                        <td>v{d.version || 1}</td>
-                        <td>{new Date(d.fecha_upload).toLocaleDateString()}</td>
-                        <td>
-                          <button
-                            className="btn btn-small"
-                            onClick={() => handleDownloadDocumento(d)}
-                            title="Descargar"
-                          >
-                            📥
-                          </button>
-                          <button
-                            className="btn btn-small btn-primary"
-                            onClick={() => handleNuevaVersion(d)}
-                            title="Nueva versión"
-                            style={{ marginLeft: '4px' }}
-                          >
-                            ➕
-                          </button>
-                        </td>
+            <div className="exp-section">
+              <h4>Historial</h4>
+              {historial.length > 0 ? (
+                <table className="users-table">
+                  <thead><tr><th>Fecha</th><th>De</th><th>A</th><th>Usuario</th><th>Observación</th></tr></thead>
+                  <tbody>
+                    {historial.map(h => (
+                      <tr key={h.id}>
+                        <td>{new Date(h.fecha_cambio).toLocaleString()}</td>
+                        <td>{h.etapa_anterior_nombre || '-'}</td>
+                        <td>{h.etapa_nueva_nombre || '-'}</td>
+                        <td>{h.usuario_nombre || '-'}</td>
+                        <td>{h.observacion || '-'}</td>
                       </tr>
-                      {expandedDocId === d.id && (
-                        <tr key={`${d.id}-timeline`}>
-                          <td colSpan={6}>
-                            <DocumentTimeline documentoId={d.id} documento={d} />
+                    ))}
+                  </tbody>
+                </table>
+              ) : <p className="empty-text">Sin cambios de etapa registrados</p>}
+            </div>
+
+            <div className="exp-section">
+              <h4>Documentos</h4>
+              {documentos.length > 0 ? (
+                <table className="users-table">
+                  <thead><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Versión</th><th>Fecha</th><th>Acciones</th></tr></thead>
+                  <tbody>
+                    {documentos.map(d => (
+                      <>
+                        <tr key={d.id}>
+                          <td>
+                            <button
+                              className="doc-name-toggle"
+                              onClick={() => setExpandedDocId(expandedDocId === d.id ? null : d.id)}
+                              title={expandedDocId === d.id ? 'Ocultar versiones' : 'Ver versiones'}
+                            >
+                              <span className="toggle-icon">{expandedDocId === d.id ? '▼' : '▶'}</span>
+                              {d.nombre_archivo}
+                            </button>
+                          </td>
+                          <td>{d.tipo_mime}</td>
+                          <td>{(d.tamano_bytes / 1024).toFixed(1)} KB</td>
+                          <td>v{d.version || 1}</td>
+                          <td>{new Date(d.fecha_upload).toLocaleDateString()}</td>
+                          <td>
+                            <button
+                              className="btn btn-small"
+                              onClick={() => handleDownloadDocumento(d)}
+                              title="Descargar"
+                            >
+                              📥
+                            </button>
+                            <button
+                              className="btn btn-small btn-primary"
+                              onClick={() => handleNuevaVersion(d)}
+                              title="Nueva versión"
+                              style={{ marginLeft: '4px' }}
+                            >
+                              ➕
+                            </button>
                           </td>
                         </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            ) : <p className="empty-text">Sin documentos adjuntos</p>}
+                        {expandedDocId === d.id && (
+                          <tr key={`${d.id}-timeline`}>
+                            <td colSpan={6}>
+                              <DocumentTimeline documentoId={d.id} documento={d} />
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <p className="empty-text">Sin documentos adjuntos</p>}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Upload Modal for new documents */}
-      <UploadModal
-        isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        expedienteId={expediente?.id}
-        onUploadComplete={handleUploadComplete}
-      />
+      {/* Upload Modal for new documents - rendered as separate overlay */}
+      {showUploadModal && (
+        <UploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          expedienteId={expediente?.id}
+          onUploadComplete={handleUploadComplete}
+        />
+      )}
 
-      {/* Upload Modal for new version of existing document */}
-      <UploadModal
-        isOpen={showNuevaVersionModal}
-        onClose={() => {
-          setShowNuevaVersionModal(false)
-          setDocumentoParaNuevaVersion(null)
-        }}
-        documentoId={documentoParaNuevaVersion?.id}
-        onUploadComplete={handleNuevaVersionComplete}
-      />
-    </div>
+      {/* Upload Modal for new version of existing document - rendered as separate overlay */}
+      {showNuevaVersionModal && (
+        <UploadModal
+          isOpen={showNuevaVersionModal}
+          onClose={() => {
+            setShowNuevaVersionModal(false)
+            setDocumentoParaNuevaVersion(null)
+          }}
+          documentoId={documentoParaNuevaVersion?.id}
+          onUploadComplete={handleNuevaVersionComplete}
+        />
+      )}
+    </>
   )
 }
 

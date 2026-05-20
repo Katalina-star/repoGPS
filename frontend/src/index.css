@@ -640,6 +640,11 @@ button { font-family: inherit; }
   z-index: 1000;
 }
 
+/* Ensure both modals use the same overlay background */
+.modal-overlay--upload {
+  background: rgba(0, 0, 0, 0.6);
+}
+
 .modal-content {
   background: white;
   border-radius: 16px;
@@ -648,25 +653,6 @@ button { font-family: inherit; }
   max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-/* Fullscreen modal for ExpedienteDetalle */
-.modal-content--expediente {
-  width: 100vw;
-  height: 100vh;
-  max-width: none;
-  max-height: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.modal-content--expediente .modal-header {
-  border-radius: 0;
-}
-
-.modal-content--expediente .modal-body {
-  overflow-y: auto;
-  height: calc(100vh - 70px);
 }
 
 /* Document name toggle button */
@@ -1140,6 +1126,64 @@ button { font-family: inherit; }
 [data-theme='dark'] .sla-warn {
   background: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
+}
+
+/* === TIMELINE THEME VARIABLES === */
+[data-theme='dark'] {
+  --timeline-bg: #1e293b;
+  --timeline-border: #334155;
+  --timeline-line: #475569;
+  --timeline-badge-bg: rgba(16, 185, 129, 0.2);
+  --timeline-badge-text: #6ee7b7;
+  --timeline-text-muted: #94a3b8;
+  --timeline-current-bg: rgba(16, 185, 129, 0.1);
+}
+
+/* Default (light) timeline variables */
+:root {
+  --timeline-bg: #f9f9f9;
+  --timeline-border: #e0e0e0;
+  --timeline-line: #e0e0e0;
+  --timeline-badge-bg: #4CAF50;
+  --timeline-badge-text: white;
+  --timeline-text-muted: #999;
+  --timeline-current-bg: #f1f8f1;
+}
+
+/* === UPLOAD MODAL THEME VARIABLES === */
+[data-theme='dark'] {
+  --upload-bg: #1e293b;
+  --upload-border: #475569;
+  --upload-text: #f1f5f9;
+  --upload-text-muted: #94a3b8;
+  --upload-dropzone-border: #475569;
+  --upload-dropzone-active: rgba(16, 185, 129, 0.2);
+  --upload-btn-primary-bg: #10b981;
+  --upload-btn-primary-hover: #059669;
+}
+
+/* === EXPEDIENTE MODAL FULLSCREEN FIX === */
+.modal-content--expediente {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.modal-content--expediente .modal-header {
+  border-radius: 0;
+}
+
+.modal-content--expediente .modal-body {
+  overflow-y: auto;
+  height: calc(100vh - 70px);
+}
+
+/* Upload modal higher z-index */
+.modal-overlay--upload {
+  z-index: 1100;
 }
 
 /* View Transition API animation */

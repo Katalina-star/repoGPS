@@ -88,30 +88,30 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
   }
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content modal-content--upload" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+    <div className="modal-overlay modal-overlay--upload" onClick={handleClose}>
+      <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="upload-modal-header">
           <h3>{isNuevaVersion ? 'Nueva Versión' : 'Subir Documento'}</h3>
-          <button className="modal-close" onClick={handleClose}>×</button>
+          <button className="upload-modal-close" onClick={handleClose}>×</button>
         </div>
 
-        <div className="modal-body">
+        <div className="upload-modal-body">
           {/* Dropzone */}
           <div
             {...getRootProps()}
-            className={`dropzone ${isDragActive ? 'active' : ''} ${isDragReject ? 'reject' : ''} ${uploading ? 'disabled' : ''}`}
+            className={`upload-dropzone ${isDragActive ? 'active' : ''} ${isDragReject ? 'reject' : ''} ${uploading ? 'disabled' : ''}`}
           >
             <input {...getInputProps()} />
             {selectedFile ? (
-              <div className="selected-file">
-                <span className="file-icon">📄</span>
-                <div className="file-info">
-                  <p className="file-name">{selectedFile.name}</p>
-                  <p className="file-size">{formatFileSize(selectedFile.size)}</p>
+              <div className="upload-selected-file">
+                <span className="upload-file-icon">📄</span>
+                <div className="upload-file-info">
+                  <p className="upload-file-name">{selectedFile.name}</p>
+                  <p className="upload-file-size">{formatFileSize(selectedFile.size)}</p>
                 </div>
                 {!uploading && (
                   <button
-                    className="btn-remove-file"
+                    className="upload-btn-remove"
                     onClick={(e) => {
                       e.stopPropagation()
                       setSelectedFile(null)
@@ -122,15 +122,15 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
                 )}
               </div>
             ) : (
-              <div className="dropzone-content">
+              <div className="upload-dropzone-content">
                 {uploading ? (
                   <p>Subiendo archivo...</p>
                 ) : (
                   <>
-                    <p className="dropzone-title">
+                    <p className="upload-dropzone-title">
                       {isDragActive ? 'Suelta el archivo aquí' : 'Arrastra un archivo o haz click para seleccionar'}
                     </p>
-                    <p className="dropzone-hint">PDF, DWG, DXF, RVT, SKP, IFC, XLSX, DOC, DOCX, JPG, PNG, TIFF (max 50MB)</p>
+                    <p className="upload-dropzone-hint">PDF, DWG, DXF, RVT, SKP, IFC, XLSX, DOC, DOCX, JPG, PNG, TIFF (max 50MB)</p>
                   </>
                 )}
               </div>
@@ -140,15 +140,15 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
           {/* Progress Bar */}
           {uploading && (
             <div className="upload-progress">
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${uploadProgress}%` }}></div>
+              <div className="upload-progress-bar">
+                <div className="upload-progress-fill" style={{ width: `${uploadProgress}%` }}></div>
               </div>
-              <p className="progress-text">{uploadProgress}%</p>
+              <p className="upload-progress-text">{uploadProgress}%</p>
             </div>
           )}
 
           {/* Description */}
-          <div className="form-group">
+          <div className="upload-form-group">
             <label>Descripción (opcional)</label>
             <textarea
               value={descripcion}
@@ -161,18 +161,18 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
 
           {/* Error */}
           {error && (
-            <div className="error-message">
+            <div className="upload-error-message">
               {error}
             </div>
           )}
         </div>
 
-        <div className="modal-footer">
-          <button className="btn-cancel" onClick={handleClose} disabled={uploading}>
+        <div className="upload-modal-footer">
+          <button className="upload-btn-cancel" onClick={handleClose} disabled={uploading}>
             Cancelar
           </button>
           <button
-            className="btn-primary"
+            className="upload-btn-primary"
             onClick={handleUpload}
             disabled={!selectedFile || uploading}
           >
@@ -182,137 +182,127 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
       </div>
 
       <style>{`
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-
-        .modal-content {
-          background: white;
-          border-radius: 8px;
-          width: 90%;
-          max-width: 500px;
-          max-height: 90vh;
-          overflow-y: auto;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .modal-content--upload {
+        .upload-modal {
+          background: var(--upload-bg, white);
+          border-radius: 12px;
           width: 70vw;
-          max-width: 800px;
-          max-height: 70vh;
+          max-width: 700px;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
 
-        .modal-header {
+        .upload-modal-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           padding: 16px 20px;
-          border-bottom: 1px solid #eee;
+          border-bottom: 1px solid var(--upload-border, #eee);
+          background: var(--surface-alt, #f8fafc);
+          border-radius: 12px 12px 0 0;
         }
 
-        .modal-header h3 {
+        .upload-modal-header h3 {
           margin: 0;
           font-size: 18px;
-          color: #333;
+          color: var(--text-main, #333);
         }
 
-        .modal-close {
+        .upload-modal-close {
           background: none;
           border: none;
           font-size: 24px;
           cursor: pointer;
-          color: #666;
+          color: var(--text-muted, #666);
           padding: 0;
           width: 30px;
           height: 30px;
           display: flex;
           align-items: center;
           justify-content: center;
+          border-radius: 6px;
+          transition: all 0.2s;
         }
 
-        .modal-body {
+        .upload-modal-close:hover {
+          background: var(--surface-hover, #f1f5f9);
+        }
+
+        .upload-modal-body {
           padding: 20px;
         }
 
-        .dropzone {
-          border: 2px dashed #ddd;
+        .upload-dropzone {
+          border: 2px dashed var(--upload-dropzone-border, #ddd);
           border-radius: 8px;
           padding: 30px;
           text-align: center;
           cursor: pointer;
           transition: all 0.2s;
           margin-bottom: 16px;
+          background: var(--bg-panel, white);
         }
 
-        .dropzone.active {
-          border-color: #4CAF50;
-          background: #f9fff9;
+        .upload-dropzone.active {
+          border-color: var(--success-color, #4CAF50);
+          background: var(--upload-dropzone-active, #f9fff9);
         }
 
-        .dropzone.reject {
-          border-color: #f44336;
+        .upload-dropzone.reject {
+          border-color: var(--danger-color, #f44336);
           background: #fff9f9;
         }
 
-        .dropzone.disabled {
+        .upload-dropzone.disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
 
-        .dropzone-content {
-          color: #666;
+        .upload-dropzone-content {
+          color: var(--upload-text-muted, #666);
         }
 
-        .dropzone-title {
+        .upload-dropzone-title {
           margin: 0 0 8px;
           font-size: 14px;
         }
 
-        .dropzone-hint {
+        .upload-dropzone-hint {
           margin: 0;
           font-size: 12px;
-          color: #999;
+          color: var(--upload-text-muted, #999);
         }
 
-        .selected-file {
+        .upload-selected-file {
           display: flex;
           align-items: center;
           gap: 12px;
         }
 
-        .file-icon {
+        .upload-file-icon {
           font-size: 32px;
         }
 
-        .file-info {
+        .upload-file-info {
           flex: 1;
           text-align: left;
         }
 
-        .file-name {
+        .upload-file-name {
           margin: 0;
           font-size: 14px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-main, #333);
         }
 
-        .file-size {
+        .upload-file-size {
           margin: 4px 0 0;
           font-size: 12px;
-          color: #999;
+          color: var(--upload-text-muted, #999);
         }
 
-        .btn-remove-file {
-          background: #f44336;
+        .upload-btn-remove {
+          background: var(--danger-color, #f44336);
           color: white;
           border: none;
           border-radius: 50%;
@@ -329,98 +319,109 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
           margin-bottom: 16px;
         }
 
-        .progress-bar {
+        .upload-progress-bar {
           height: 8px;
-          background: #e0e0e0;
+          background: var(--surface-hover, #e0e0e0);
           border-radius: 4px;
           overflow: hidden;
         }
 
-        .progress-fill {
+        .upload-progress-fill {
           height: 100%;
-          background: #4CAF50;
+          background: var(--success-color, #4CAF50);
           transition: width 0.2s;
         }
 
-        .progress-text {
+        .upload-progress-text {
           text-align: center;
           margin: 8px 0 0;
           font-size: 12px;
-          color: #666;
+          color: var(--upload-text-muted, #666);
         }
 
-        .form-group {
+        .upload-form-group {
           margin-bottom: 16px;
         }
 
-        .form-group label {
+        .upload-form-group label {
           display: block;
           margin-bottom: 8px;
           font-size: 14px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-main, #333);
         }
 
-        .form-group textarea {
+        .upload-form-group textarea {
           width: 100%;
           padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
+          border: 1px solid var(--upload-border, #ddd);
+          border-radius: 6px;
           font-size: 14px;
           resize: vertical;
+          background: var(--bg-panel, white);
+          color: var(--text-main, #333);
         }
 
-        .form-group textarea:disabled {
-          background: #f5f5f5;
+        .upload-form-group textarea:disabled {
+          background: var(--surface-hover, #f5f5f5);
         }
 
-        .error-message {
+        .upload-form-group textarea:focus {
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+          outline: none;
+        }
+
+        .upload-error-message {
           padding: 12px;
-          background: #fff3f3;
-          border: 1px solid #ffcdd2;
-          border-radius: 4px;
-          color: #c62828;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 6px;
+          color: var(--danger-color, #c62828);
           font-size: 14px;
           margin-bottom: 16px;
         }
 
-        .modal-footer {
+        .upload-modal-footer {
           display: flex;
           justify-content: flex-end;
           gap: 12px;
           padding: 16px 20px;
-          border-top: 1px solid #eee;
+          border-top: 1px solid var(--upload-border, #eee);
+          background: var(--surface-alt, #f8fafc);
+          border-radius: 0 0 12px 12px;
         }
 
-        .btn-cancel, .btn-primary {
+        .upload-btn-cancel, .upload-btn-primary {
           padding: 10px 20px;
-          border-radius: 4px;
+          border-radius: 6px;
           font-size: 14px;
+          font-weight: 500;
           cursor: pointer;
           transition: all 0.2s;
         }
 
-        .btn-cancel {
-          background: white;
-          border: 1px solid #ddd;
-          color: #666;
+        .upload-btn-cancel {
+          background: var(--bg-panel, white);
+          border: 1px solid var(--border-color, #ddd);
+          color: var(--text-main, #666);
         }
 
-        .btn-cancel:hover:not(:disabled) {
-          background: #f5f5f5;
+        .upload-btn-cancel:hover:not(:disabled) {
+          background: var(--surface-hover, #f5f5f5);
         }
 
-        .btn-primary {
-          background: #4CAF50;
+        .upload-btn-primary {
+          background: var(--upload-btn-primary-bg, var(--success-color, #4CAF50));
           border: none;
           color: white;
         }
 
-        .btn-primary:hover:not(:disabled) {
-          background: #45a049;
+        .upload-btn-primary:hover:not(:disabled) {
+          background: var(--upload-btn-primary-hover, var(--success-hover, #45a049));
         }
 
-        .btn-primary:disabled, .btn-cancel:disabled {
+        .upload-btn-primary:disabled, .upload-btn-cancel:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }

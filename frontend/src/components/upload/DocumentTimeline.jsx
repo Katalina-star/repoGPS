@@ -120,23 +120,24 @@ export const DocumentTimeline = ({ documentoId, documento }) => {
         .document-timeline {
           margin-top: 8px;
           padding-top: 8px;
-          border-top: 1px solid #eee;
+          border-top: 1px solid var(--timeline-border, #eee);
         }
 
         .timeline-toggle {
           background: none;
           border: none;
-          color: #666;
+          color: var(--text-muted, #666);
           font-size: 13px;
           cursor: pointer;
           display: flex;
           align-items: center;
           gap: 6px;
           padding: 4px 0;
+          transition: color 0.2s;
         }
 
         .timeline-toggle:hover {
-          color: #4CAF50;
+          color: var(--success-color, #4CAF50);
         }
 
         .toggle-icon {
@@ -150,16 +151,16 @@ export const DocumentTimeline = ({ documentoId, documento }) => {
 
         .loading-text, .error-text {
           font-size: 12px;
-          color: #999;
+          color: var(--timeline-text-muted, #999);
           margin: 8px 0;
         }
 
         .error-text {
-          color: #f44336;
+          color: var(--danger-color, #f44336);
         }
 
         .timeline-list {
-          border-left: 2px solid #e0e0e0;
+          border-left: 2px solid var(--timeline-line, #e0e0e0);
           padding-left: 16px;
         }
 
@@ -179,23 +180,24 @@ export const DocumentTimeline = ({ documentoId, documento }) => {
         }
 
         .dot-current {
-          color: #4CAF50;
+          color: var(--success-color, #4CAF50);
           font-size: 14px;
         }
 
         .dot-past {
-          color: #bbb;
+          color: var(--timeline-text-muted, #bbb);
           font-size: 12px;
         }
 
         .timeline-body {
-          background: #f9f9f9;
-          border-radius: 4px;
+          background: var(--timeline-bg, #f9f9f9);
+          border-radius: 6px;
           padding: 10px;
+          border: 1px solid var(--timeline-border, #e0e0e0);
         }
 
         .timeline-item.current .timeline-body {
-          background: #f1f8f1;
+          background: var(--timeline-current-bg, #f1f8f1);
         }
 
         .version-header {
@@ -208,38 +210,40 @@ export const DocumentTimeline = ({ documentoId, documento }) => {
         .version-number {
           font-weight: 600;
           font-size: 13px;
-          color: #333;
+          color: var(--text-main, #333);
         }
 
         .version-badge {
-          background: #4CAF50;
-          color: white;
+          background: var(--timeline-badge-bg, #4CAF50);
+          color: var(--timeline-badge-text, white);
           font-size: 10px;
           padding: 2px 6px;
           border-radius: 3px;
+          font-weight: 500;
         }
 
         .version-meta {
           display: flex;
           gap: 12px;
           font-size: 11px;
-          color: #999;
+          color: var(--timeline-text-muted, #999);
           margin-bottom: 8px;
         }
 
         .btn-download-version {
-          background: white;
-          border: 1px solid #ddd;
-          color: #666;
+          background: var(--bg-panel, white);
+          border: 1px solid var(--border-color, #ddd);
+          color: var(--text-muted, #666);
           font-size: 11px;
           padding: 4px 8px;
-          border-radius: 3px;
+          border-radius: 4px;
           cursor: pointer;
+          transition: all 0.2s;
         }
 
         .btn-download-version:hover {
-          background: #f5f5f5;
-          border-color: #ccc;
+          background: var(--surface-hover, #f5f5f5);
+          border-color: var(--border-color, #ccc);
         }
       `}</style>
     </div>
