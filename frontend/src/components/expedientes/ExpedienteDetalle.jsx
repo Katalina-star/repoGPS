@@ -16,6 +16,7 @@ const ExpedienteDetalle = ({
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showNuevaVersionModal, setShowNuevaVersionModal] = useState(false)
   const [documentoParaNuevaVersion, setDocumentoParaNuevaVersion] = useState(null)
+  const [expandedDocId, setExpandedDocId] = useState(null)
 
   const handleAvanzar = async () => {
     const observacion = prompt('Observación (opcional):')
@@ -102,7 +103,7 @@ const ExpedienteDetalle = ({
 
   return (
     <div className="modal-overlay" onClick={onCerrar}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
+      <div className="modal-content modal-content--expediente" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Expediente #{expediente.id}</h2>
           <button className="btn-close" onClick={onCerrar}>×</button>
@@ -133,6 +134,7 @@ const ExpedienteDetalle = ({
           <div className="exp-actions">
             <button className="btn btn-primary" onClick={handleAvanzar}>Avanzar</button>
             <button className="btn btn-secondary" onClick={handleDevolver}>Devolver</button>
+            <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>Adjuntar archivo</button>
           </div>
 
           <div className="exp-section">
@@ -162,30 +164,48 @@ const ExpedienteDetalle = ({
                 <thead><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Versión</th><th>Fecha</th><th>Acciones</th></tr></thead>
                 <tbody>
                   {documentos.map(d => (
-                    <tr key={d.id}>
-                      <td>{d.nombre_archivo}</td>
-                      <td>{d.tipo_mime}</td>
-                      <td>{(d.tamano_bytes / 1024).toFixed(1)} KB</td>
-                      <td>v{d.version || 1}</td>
-                      <td>{new Date(d.fecha_upload).toLocaleDateString()}</td>
-                      <td>
-                        <button
-                          className="btn btn-small"
-                          onClick={() => handleDownloadDocumento(d)}
-                          title="Descargar"
-                        >
-                          📥
-                        </button>
-                        <button
-                          className="btn btn-small btn-primary"
-                          onClick={() => handleNuevaVersion(d)}
-                          title="Nueva versión"
-                          style={{ marginLeft: '4px' }}
-                        >
-                          ➕
-                        </button>
-                      </td>
-                    </tr>
+                    <>
+                      <tr key={d.id}>
+                        <td>
+                          <button
+                            className="doc-name-toggle"
+                            onClick={() => setExpandedDocId(expandedDocId === d.id ? null : d.id)}
+                            title={expandedDocId === d.id ? 'Ocultar versiones' : 'Ver versiones'}
+                          >
+                            <span className="toggle-icon">{expandedDocId === d.id ? '▼' : '▶'}</span>
+                            {d.nombre_archivo}
+                          </button>
+                        </td>
+                        <td>{d.tipo_mime}</td>
+                        <td>{(d.tamano_bytes / 1024).toFixed(1)} KB</td>
+                        <td>v{d.version || 1}</td>
+                        <td>{new Date(d.fecha_upload).toLocaleDateString()}</td>
+                        <td>
+                          <button
+                            className="btn btn-small"
+                            onClick={() => handleDownloadDocumento(d)}
+                            title="Descargar"
+                          >
+                            📥
+                          </button>
+                          <button
+                            className="btn btn-small btn-primary"
+                            onClick={() => handleNuevaVersion(d)}
+                            title="Nueva versión"
+                            style={{ marginLeft: '4px' }}
+                          >
+                            ➕
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedDocId === d.id && (
+                        <tr key={`${d.id}-timeline`}>
+                          <td colSpan={6}>
+                            <DocumentTimeline documentoId={d.id} documento={d} />
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>

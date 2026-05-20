@@ -650,6 +650,49 @@ button { font-family: inherit; }
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
+/* Fullscreen modal for ExpedienteDetalle */
+.modal-content--expediente {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.modal-content--expediente .modal-header {
+  border-radius: 0;
+}
+
+.modal-content--expediente .modal-body {
+  overflow-y: auto;
+  height: calc(100vh - 70px);
+}
+
+/* Document name toggle button */
+.doc-name-toggle {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  font-size: inherit;
+  text-align: left;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: inherit;
+}
+
+.doc-name-toggle:hover {
+  text-decoration: underline;
+}
+
+.doc-name-toggle .toggle-icon {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;

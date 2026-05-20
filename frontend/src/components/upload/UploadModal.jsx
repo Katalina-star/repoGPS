@@ -89,7 +89,7 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content modal-content--upload" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{isNuevaVersion ? 'Nueva Versión' : 'Subir Documento'}</h3>
           <button className="modal-close" onClick={handleClose}>×</button>
@@ -203,6 +203,12 @@ export const UploadModal = ({ isOpen, onClose, expedienteId, documentoId, onUplo
           max-height: 90vh;
           overflow-y: auto;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-content--upload {
+          width: 70vw;
+          max-width: 800px;
+          max-height: 70vh;
         }
 
         .modal-header {
