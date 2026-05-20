@@ -27,7 +27,7 @@ function initGarageClient() {
 
   s3Client = new S3Client({
     endpoint: endpoint,
-    region: 'us-east-1',
+    region: 'garage', // GarageHQ requires 'garage' as region
     forcePathStyle: true, // REQUIRED for S3-compatible like GarageHQ
     credentials: {
       accessKeyId: process.env.GARAGE_ACCESS_KEY || 'admin',
