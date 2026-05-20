@@ -1201,12 +1201,13 @@ app.post("/api/documentos/upload", authMiddleware, upload.single("archivo"), asy
     // Insert into documentos table
     const insertResult = await client.query(
       `INSERT INTO documentos 
-       (expediente_id, nombre_archivo, ruta_garage, tipo_mime, tamano_bytes, version, usuario_upload_id, es_version_actual)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       (expediente_id, nombre_archivo, ruta_archivo, ruta_garage, tipo_mime, tamano_bytes, version, usuario_upload_id, es_version_actual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
        RETURNING *`,
       [
         expediente_id,
         req.file.originalname,
+        storageKey,
         storageKey,
         req.file.mimetype,
         req.file.size,
@@ -1362,7 +1363,7 @@ app.post("/api/documentos/:id/versiones", authMiddleware, upload.single("archivo
       [currentVersion, documentoId]
     );
 
-    // Save current version to history
+    // Save current version to history (use CURRENT document's data, not the new upload)
     await client.query(
       `INSERT INTO documentos_version
        (documento_id, version, ruta_garage, nombre_archivo, tipo_mime, tamano_bytes, usuario_upload_id, es_version_actual)
@@ -1370,11 +1371,11 @@ app.post("/api/documentos/:id/versiones", authMiddleware, upload.single("archivo
       [
         documentoId,
         currentVersion,
-        storageKey,
-        req.file.originalname,
-        req.file.mimetype,
-        req.file.size,
-        usuarioId,
+        currentDoc.ruta_garage,
+        currentDoc.nombre_archivo,
+        currentDoc.tipo_mime,
+        currentDoc.tamano_bytes,
+        currentDoc.usuario_upload_id,
         false
       ]
     );
@@ -1437,17 +1438,27 @@ app.get("/api/documentos/:id/descargar/:version?", async (req, res) => {
     let doc;
     
     if (version) {
-      // Download specific version from history
-      const versionResult = await pool.query(
-        "SELECT * FROM documentos_version WHERE documento_id = $1 AND version = $2",
+      // First check if it's the current version in documentos table
+      const currentResult = await pool.query(
+        "SELECT * FROM documentos WHERE id = $1 AND version = $2",
         [id, parseInt(version)]
       );
       
-      if (versionResult.rows.length === 0) {
-        return res.status(404).json({ error: "Versión no encontrada" });
+      if (currentResult.rows.length > 0) {
+        doc = currentResult.rows[0];
+      } else {
+        // If not, check in the version history
+        const versionResult = await pool.query(
+          "SELECT * FROM documentos_version WHERE documento_id = $1 AND version = $2",
+          [id, parseInt(version)]
+        );
+        
+        if (versionResult.rows.length === 0) {
+          return res.status(404).json({ error: "Versión no encontrada" });
+        }
+        
+        doc = versionResult.rows[0];
       }
-      
-      doc = versionResult.rows[0];
     } else {
       // Download current version
       const currentResult = await pool.query(
